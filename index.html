@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Editor Inteligente de PDF</title>
+
+  <!-- Bibliotecas carregadas por CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#11182c;
+      --panel2:#151f38;
+      --text:#eef3ff;
+      --muted:#9db0d2;
+      --accent:#69e2ff;
+      --accent2:#8b7cff;
+      --ok:#54e3a1;
+      --danger:#ff6f91;
+      --border:rgba(255,255,255,.10);
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(circle at 15% 10%,rgba(105,226,255,.12),transparent 25%),
+        radial-gradient(circle at 90% 15%,rgba(139,124,255,.12),transparent 25%),
+        var(--bg);
+      color:var(--text);
+      min-height:100vh;
+    }
+    .app{max-width:1500px;margin:auto;padding:22px}
+    .top{
+      display:flex;gap:16px;align-items:center;justify-content:space-between;
+      margin-bottom:18px
+    }
+    .brand h1{margin:0;font-size:24px}
+    .brand p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .badge{
+      padding:9px 12px;border:1px solid var(--border);border-radius:999px;
+      color:var(--muted);background:rgba(255,255,255,.035);font-size:12px
+    }
+    .grid{
+      display:grid;grid-template-columns:380px 1fr;gap:18px;align-items:start
+    }
+    .panel{
+      background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.015));
+      border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)
+    }
+    .sidebar{padding:18px;position:sticky;top:18px}
+    .viewer{min-height:78vh;overflow:hidden}
+    .section{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+    .section:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+    .section h3{font-size:14px;margin:0 0 11px;color:#dbe6ff}
+    .drop{
+      border:1.5px dashed rgba(105,226,255,.40);
+      border-radius:16px;padding:18px;text-align:center;
+      background:rgba(105,226,255,.045);cursor:pointer;transition:.2s
+    }
+    .drop:hover,.drop.drag{background:rgba(105,226,255,.10);border-color:var(--accent)}
+    .drop strong{display:block;margin-bottom:6px}
+    .drop span{font-size:12px;color:var(--muted)}
+    input[type=file]{display:none}
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 7px}
+    input,select,textarea,button{
+      font:inherit
+    }
+    input[type=text],input[type=number],select,textarea{
+      width:100%;border:1px solid var(--border);background:#0e1529;color:var(--text);
+      border-radius:12px;padding:11px 12px;outline:none
+    }
+    input:focus,select:focus,textarea:focus{border-color:rgba(105,226,255,.55)}
+    textarea{min-height:72px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .actions{display:grid;gap:9px}
+    button{
+      border:0;border-radius:12px;padding:11px 13px;cursor:pointer;
+      background:#202b49;color:var(--text);font-weight:700;transition:.15s
+    }
+    button:hover{transform:translateY(-1px);filter:brightness(1.08)}
+    button.primary{
+      background:linear-gradient(135deg,var(--accent),var(--accent2));color:#07101b
+    }
+    button.success{
+      background:linear-gradient(135deg,#4ee0a2,#73f1d4);color:#061811
+    }
+    button.ghost{border:1px solid var(--border);background:transparent}
+    button.danger{background:rgba(255,111,145,.12);color:#ff9fb5;border:1px solid rgba(255,111,145,.25)}
+    button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .status{
+      border:1px solid var(--border);padding:10px 12px;border-radius:12px;
+      font-size:12px;color:var(--muted);background:rgba(255,255,255,.025)
+    }
+    .status.ok{color:#a9ffd8;border-color:rgba(84,227,161,.25);background:rgba(84,227,161,.07)}
+    .status.warn{color:#ffdca8;border-color:rgba(255,190,90,.25);background:rgba(255,190,90,.06)}
+    .canvasbar{
+      display:flex;gap:10px;align-items:center;justify-content:space-between;
+      padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)
+    }
+    .canvasbar .left,.canvasbar .right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .canvasbar button{padding:8px 10px;font-size:12px}
+    .pageInfo{font-size:12px;color:var(--muted)}
+    .stage{
+      position:relative;min-height:72vh;display:flex;justify-content:center;align-items:flex-start;
+      padding:26px;overflow:auto;background:
+        linear-gradient(45deg,rgba(255,255,255,.018) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.018) 75%),
+        linear-gradient(45deg,rgba(255,255,255,.018) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.018) 75%);
+      background-size:28px 28px;background-position:0 0,14px 14px
+    }
+    .paper{
+      position:relative;box-shadow:0 14px 45px rgba(0,0,0,.55);background:white;line-height:0
+    }
+    canvas{display:block;max-width:none}
+    .marker{
+      position:absolute;border:2px solid #ff3b6e;background:rgba(255,59,110,.12);
+      pointer-events:none;border-radius:3px
+    }
+    .marker::after{
+      content:"campo";position:absolute;top:-20px;left:-2px;
+      background:#ff3b6e;color:white;font:700 10px/1 sans-serif;padding:4px 6px;border-radius:4px
+    }
+    .manualHint{
+      position:absolute;inset:0;cursor:crosshair;display:none
+    }
+    .manualHint.active{display:block}
+    .detected-list{
+      display:grid;gap:7px;max-height:180px;overflow:auto
+    }
+    .detected{
+      border:1px solid var(--border);border-radius:10px;padding:8px;cursor:pointer;
+      background:rgba(255,255,255,.025);font-size:12px
+    }
+    .detected:hover{border-color:rgba(105,226,255,.45)}
+    .detected b{color:#dff8ff}
+    .detected small{display:block;color:var(--muted);margin-top:4px;line-height:1.3}
+    .help{font-size:11px;color:var(--muted);line-height:1.45}
+    .hidden{display:none!important}
+    .spinner{
+      width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:white;
+      border-radius:50%;display:inline-block;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr}
+      .sidebar{position:static}
+      .viewer{min-height:60vh}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand">
+      <h1>Editor Inteligente de PDF</h1>
+      <p>Encontre um campo, altere o texto e gere um novo PDF direto no navegador.</p>
+    </div>
+    <div class="badge">Processamento local • sem upload para servidor</div>
+  </div>
+
+  <div class="grid">
+    <aside class="panel sidebar">
+      <div class="section">
+        <h3>1. Abrir PDF</h3>
+        <label class="drop" id="dropZone" for="pdfInput">
+          <strong>Arraste o PDF aqui</strong>
+          <span>ou clique para selecionar</span>
+        </label>
+        <input id="pdfInput" type="file" accept="application/pdf,.pdf">
+      </div>
+
+      <div class="section">
+        <h3>2. Campo a localizar</h3>
+        <label for="fieldName">Procurar por</label>
+        <select id="fieldName">
+          <option value="Endereço">Endereço</option>
+          <option value="CEP">CEP</option>
+          <option value="Bairro">Bairro</option>
+          <option value="Município">Município</option>
+          <option value="Cidade">Cidade</option>
+          <option value="custom">Outro texto...</option>
+        </select>
+        <div id="customWrap" class="hidden" style="margin-top:9px">
+          <input id="customField" type="text" placeholder="Ex.: Destinatário/Remetente">
+        </div>
+        <div class="actions" style="margin-top:10px">
+          <button id="detectBtn" class="primary" disabled>Localizar automaticamente</button>
+          <button id="ocrBtn" class="ghost" disabled>Usar OCR se for escaneado</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>3. Resultado</h3>
+        <div id="status" class="status">Abra um PDF para começar.</div>
+        <div id="detectedList" class="detected-list" style="margin-top:9px"></div>
+      </div>
+
+      <div class="section">
+        <h3>4. Novo texto</h3>
+        <label for="newText">Substituir por</label>
+        <textarea id="newText" placeholder="Digite o novo endereço ou valor..."></textarea>
+
+        <div class="row" style="margin-top:9px">
+          <div>
+            <label for="fontSize">Fonte</label>
+            <input id="fontSize" type="number" min="5" max="40" step="0.5" value="8">
+          </div>
+          <div>
+            <label for="rectWidth">Largura da área</label>
+            <input id="rectWidth" type="number" min="30" max="1000" value="220">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:9px">
+          <div>
+            <label for="rectHeight">Altura da área</label>
+            <input id="rectHeight" type="number" min="8" max="300" value="18">
+          </div>
+          <div>
+            <label for="padding">Margem interna</label>
+            <input id="padding" type="number" min="0" max="20" value="2">
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top:10px">
+          <button id="manualBtn" class="ghost" disabled>Selecionar posição manualmente</button>
+          <button id="applyBtn" class="success" disabled>Aplicar alteração</button>
+          <button id="downloadBtn" class="primary" disabled>Baixar PDF alterado</button>
+        </div>
+      </div>
+
+      <div class="help">
+        Dica: se o campo não for encontrado automaticamente, clique em
+        <b>Selecionar posição manualmente</b> e depois clique no local exato do texto no PDF.
+        O site cobre a área antiga com branco e escreve o novo valor por cima.
+      </div>
+    </aside>
+
+    <main class="panel viewer">
+      <div class="canvasbar">
+        <div class="left">
+          <button id="prevBtn" disabled>◀ Página</button>
+          <button id="nextBtn" disabled>Próxima ▶</button>
+          <span id="pageInfo" class="pageInfo">Nenhum PDF aberto</span>
+        </div>
+        <div class="right">
+          <button id="zoomOut" disabled>−</button>
+          <span id="zoomInfo" class="pageInfo">100%</span>
+          <button id="zoomIn" disabled>+</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="paper" id="paper">
+          <canvas id="canvas"></canvas>
+          <div id="marker" class="marker hidden"></div>
+          <div id="manualLayer" class="manualHint"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+  import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+
+  const $ = (id) => document.getElementById(id);
+  const pdfInput = $("pdfInput"), dropZone = $("dropZone"), canvas = $("canvas");
+  const ctx = canvas.getContext("2d"), paper = $("paper"), marker = $("marker");
+  const manualLayer = $("manualLayer"), status = $("status");
+  const fieldName = $("fieldName"), customWrap = $("customWrap"), customField = $("customField");
+  const detectBtn = $("detectBtn"), ocrBtn = $("ocrBtn"), manualBtn = $("manualBtn");
+  const applyBtn = $("applyBtn"), downloadBtn = $("downloadBtn");
+  const detectedList = $("detectedList"), newText = $("newText");
+  const fontSize = $("fontSize"), rectWidth = $("rectWidth"), rectHeight = $("rectHeight"), padding = $("padding");
+  const prevBtn = $("prevBtn"), nextBtn = $("nextBtn"), pageInfo = $("pageInfo");
+  const zoomOut = $("zoomOut"), zoomIn = $("zoomIn"), zoomInfo = $("zoomInfo");
+
+  let originalBytes = null;
+  let workingBytes = null;
+  let pdfjsDoc = null;
+  let currentPage = 1;
+  let scale = 1.35;
+  let selected = null; // {page,x,y,width,height,text, pdfX,pdfY,pdfWidth,pdfHeight}
+  let pageTextCache = new Map();
+
+  function setStatus(msg, type="") {
+    status.className = "status" + (type ? " " + type : "");
+    status.innerHTML = msg;
+  }
+
+  function normalize(s){
+    return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+  }
+
+  fieldName.addEventListener("change", () => {
+    customWrap.classList.toggle("hidden", fieldName.value !== "custom");
+  });
+
+  function getSearchTerm(){
+    return fieldName.value === "custom" ? customField.value.trim() : fieldName.value;
+  }
+
+  async function loadFile(file){
+    if(!file || file.type !== "application/pdf"){
+      setStatus("Escolha um arquivo PDF válido.", "warn");
+      return;
+    }
+    originalBytes = new Uint8Array(await file.arrayBuffer());
+    workingBytes = originalBytes.slice();
+    pageTextCache.clear();
+    selected = null;
+    marker.classList.add("hidden");
+    detectedList.innerHTML = "";
+    pdfjsDoc = await pdfjsLib.getDocument({data: workingBytes}).promise;
+    currentPage = 1;
+    await renderPage();
+    [detectBtn,ocrBtn,manualBtn,prevBtn,nextBtn,zoomOut,zoomIn].forEach(b=>b.disabled=false);
+    applyBtn.disabled = true;
+    downloadBtn.disabled = true;
+    setStatus(`PDF carregado com <b>${pdfjsDoc.numPages}</b> página(s).`, "ok");
+  }
+
+  pdfInput.addEventListener("change", e => loadFile(e.target.files[0]));
+  ["dragenter","dragover"].forEach(ev=>dropZone.addEventListener(ev,e=>{
+    e.preventDefault(); dropZone.classList.add("drag");
+  }));
+  ["dragleave","drop"].forEach(ev=>dropZone.addEventListener(ev,e=>{
+    e.preventDefault(); dropZone.classList.remove("drag");
+  }));
+  dropZone.addEventListener("drop", e => loadFile(e.dataTransfer.files[0]));
+
+  async function renderPage(){
+    if(!pdfjsDoc) return;
+    const page = await pdfjsDoc.getPage(currentPage);
+    const viewport = page.getViewport({scale});
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    paper.style.width = viewport.width + "px";
+    paper.style.height = viewport.height + "px";
+    await page.render({canvasContext:ctx,viewport}).promise;
+    pageInfo.textContent = `Página ${currentPage} de ${pdfjsDoc.numPages}`;
+    zoomInfo.textContent = Math.round(scale/1.35*100) + "%";
+    if(selected && selected.page === currentPage) drawMarker(selected);
+    else marker.classList.add("hidden");
+  }
+
+  prevBtn.onclick = async()=>{ if(currentPage>1){currentPage--;await renderPage();}};
+  nextBtn.onclick = async()=>{ if(currentPage<pdfjsDoc.numPages){currentPage++;await renderPage();}};
+  zoomOut.onclick = async()=>{scale=Math.max(.55,scale-.15);await renderPage();};
+  zoomIn.onclick = async()=>{scale=Math.min(3,scale+.15);await renderPage();};
+
+  async function extractText(pageNo){
+    if(pageTextCache.has(pageNo)) return pageTextCache.get(pageNo);
+    const page = await pdfjsDoc.getPage(pageNo);
+    const viewport = page.getViewport({scale:1});
+    const content = await page.getTextContent();
+
+    const items = content.items.map(it=>{
+      const tx = pdfjsLib.Util.transform(viewport.transform, it.transform);
+      const x = tx[4];
+      const baselineY = tx[5];
+      const h = Math.max(5, Math.abs(it.height || tx[3] || 8));
+      const w = Math.max(2, it.width || 2);
+      return {
+        text: it.str,
+        x,
+        y: baselineY - h,
+        baselineY,
+        width:w,
+        height:h
+      };
+    }).filter(x=>x.text && x.text.trim());
+
+    const data = {items, viewport};
+    pageTextCache.set(pageNo,data);
+    return data;
+  }
+
+  function scoreCandidate(label, candidate){
+    const dy = candidate.y - label.y;
+    const dx = candidate.x - label.x;
+    let score = 9999;
+    // mesmo bloco logo abaixo: comum em DANFE
+    if(dy > 2 && dy < 35 && Math.abs(dx) < 140) score = Math.abs(dy-12) + Math.abs(dx)*0.08;
+    // valor à direita na mesma linha
+    if(Math.abs(dy) < 8 && dx > 10 && dx < 500) score = Math.min(score, dx*.07 + Math.abs(dy));
+    return score;
+  }
+
+  async function detect(){
+    if(!pdfjsDoc) return;
+    const term = getSearchTerm();
+    if(!term){setStatus("Digite o texto que deseja localizar.","warn");return;}
+
+    detectBtn.disabled = true;
+    detectBtn.innerHTML = '<span class="spinner"></span>Procurando...';
+    detectedList.innerHTML = "";
+    const matches = [];
+
+    for(let p=1;p<=pdfjsDoc.numPages;p++){
+      const {items} = await extractText(p);
+      const labels = items.filter(it=>normalize(it.text).includes(normalize(term)));
+
+      for(const label of labels){
+        let candidates = items
+          .filter(it=>it!==label && !normalize(it.text).includes(normalize(term)))
+          .map(it=>({it,score:scoreCandidate(label,it)}))
+          .filter(x=>x.score<9999)
+          .sort((a,b)=>a.score-b.score);
+
+        // Quando o rótulo e o valor estão no mesmo item: "Endereço: Rua..."
+        const raw = label.text;
+        const idx = normalize(raw).indexOf(normalize(term));
+        let inlineValue = "";
+        if(idx >= 0){
+          const colon = raw.indexOf(":");
+          if(colon >= 0 && raw.slice(colon+1).trim()) inlineValue = raw.slice(colon+1).trim();
+        }
+
+        if(inlineValue){
+          matches.push({
+            page:p,text:inlineValue,
+            x:label.x + Math.min(label.width*.35,100),
+            y:label.y,
+            width:Math.max(120,label.width*.65),
+            height:Math.max(12,label.height+4)
+          });
+        } else if(candidates[0]){
+          const c = candidates[0].it;
+          matches.push({
+            page:p,text:c.text,
+            x:c.x,y:c.y,
+            width:Math.max(120,c.width+12),
+            height:Math.max(12,c.height+5)
+          });
+        }
+      }
+    }
+
+    detectBtn.disabled = false;
+    detectBtn.textContent = "Localizar automaticamente";
+
+    if(!matches.length){
+      setStatus(`Não encontrei <b>${term}</b> como texto selecionável. Tente OCR ou seleção manual.`, "warn");
+      return;
+    }
+
+    setStatus(`Encontrei <b>${matches.length}</b> possível(is) posição(ões). Clique em uma delas.`, "ok");
+
+    matches.forEach((m,i)=>{
+      const el = document.createElement("div");
+      el.className = "detected";
+      el.innerHTML = `<b>Página ${m.page}</b><small>${escapeHtml(m.text || "(posição encontrada)")}</small>`;
+      el.onclick = async()=>{
+        selectMatch(m);
+        currentPage = m.page;
+        await renderPage();
+      };
+      detectedList.appendChild(el);
+    });
+
+    selectMatch(matches[0]);
+    currentPage = matches[0].page;
+    await renderPage();
+  }
+
+  function selectMatch(m){
+    selected = {
+      page:m.page,
+      x:m.x, y:m.y,
+      width:Number(rectWidth.value)||m.width,
+      height:Number(rectHeight.value)||m.height,
+      text:m.text||""
+    };
+    rectWidth.value = Math.round(m.width || 220);
+    rectHeight.value = Math.round(m.height || 18);
+    newText.placeholder = m.text ? `Atual: ${m.text}\nDigite o novo valor...` : "Digite o novo valor...";
+    applyBtn.disabled = false;
+    if(currentPage===m.page) drawMarker(selected);
+  }
+
+  function drawMarker(sel){
+    const sx = sel.x * scale;
+    const sy = sel.y * scale;
+    const sw = Number(rectWidth.value || sel.width) * scale;
+    const sh = Number(rectHeight.value || sel.height) * scale;
+    marker.style.left = sx+"px";
+    marker.style.top = sy+"px";
+    marker.style.width = sw+"px";
+    marker.style.height = sh+"px";
+    marker.classList.remove("hidden");
+  }
+
+  [rectWidth,rectHeight].forEach(el=>el.addEventListener("input",()=>{
+    if(selected && selected.page===currentPage){
+      selected.width=Number(rectWidth.value);
+      selected.height=Number(rectHeight.value);
+      drawMarker(selected);
+    }
+  }));
+
+  detectBtn.onclick = detect;
+
+  manualBtn.onclick = ()=>{
+    if(!pdfjsDoc) return;
+    manualLayer.classList.add("active");
+    setStatus("Clique no ponto onde começa o texto que deseja substituir.", "warn");
+  };
+
+  manualLayer.onclick = (e)=>{
+    const r = manualLayer.getBoundingClientRect();
+    const x = (e.clientX-r.left)/scale;
+    const y = (e.clientY-r.top)/scale;
+    selected = {
+      page:currentPage,x,y,
+      width:Number(rectWidth.value)||220,
+      height:Number(rectHeight.value)||18,
+      text:""
+    };
+    manualLayer.classList.remove("active");
+    drawMarker(selected);
+    applyBtn.disabled=false;
+    setStatus("Posição manual selecionada. Ajuste largura/altura e digite o novo texto.", "ok");
+  };
+
+  async function runOCR(){
+    if(!pdfjsDoc) return;
+    const term = getSearchTerm();
+    if(!term){setStatus("Escolha ou digite o nome do campo primeiro.","warn");return;}
+
+    ocrBtn.disabled=true;
+    ocrBtn.innerHTML='<span class="spinner"></span>Executando OCR...';
+    setStatus("OCR pode levar alguns segundos. Estou lendo a página atual.", "warn");
+
+    // usa o canvas atual como imagem
+    const dataUrl = canvas.toDataURL("image/png");
+    const result = await Tesseract.recognize(dataUrl, "por", {
+      logger: m => {
+        if(m.status==="recognizing text"){
+          setStatus(`OCR: ${Math.round((m.progress||0)*100)}%`, "warn");
+        }
+      }
+    }).catch(err=>null);
+
+    ocrBtn.disabled=false;
+    ocrBtn.textContent="Usar OCR se for escaneado";
+
+    if(!result){
+      setStatus("Falha no OCR. Use a seleção manual.", "warn");
+      return;
+    }
+
+    const words = result.data.words || [];
+    const target = normalize(term);
+    const hit = words.find(w=>normalize(w.text).includes(target));
+
+    if(!hit){
+      setStatus(`OCR terminou, mas não localizou <b>${term}</b>. Use seleção manual.`, "warn");
+      return;
+    }
+
+    const b = hit.bbox;
+    selected = {
+      page:currentPage,
+      x:b.x0/scale,
+      y:b.y1/scale + 2,
+      width:Number(rectWidth.value)||220,
+      height:Number(rectHeight.value)||18,
+      text:""
+    };
+    drawMarker(selected);
+    applyBtn.disabled=false;
+    setStatus("Rótulo encontrado via OCR. A posição foi marcada; ajuste se necessário.", "ok");
+  }
+
+  ocrBtn.onclick = runOCR;
+
+  function wrapText(text, font, size, maxWidth){
+    const words = text.trim().split(/\s+/);
+    const lines = [];
+    let line = "";
+    for(const word of words){
+      const test = line ? line+" "+word : word;
+      if(font.widthOfTextAtSize(test,size) <= maxWidth || !line){
+        line = test;
+      }else{
+        lines.push(line);
+        line = word;
+      }
+    }
+    if(line) lines.push(line);
+    return lines;
+  }
+
+  applyBtn.onclick = async()=>{
+    if(!selected || !workingBytes) return;
+    const text = newText.value.trim();
+    if(!text){setStatus("Digite o novo texto antes de aplicar.","warn");return;}
+
+    applyBtn.disabled=true;
+    applyBtn.innerHTML='<span class="spinner"></span>Aplicando...';
+
+    const pdfDoc = await PDFLib.PDFDocument.load(workingBytes);
+    const page = pdfDoc.getPages()[selected.page-1];
+    const { width:pw, height:ph } = page.getSize();
+
+    // As coordenadas extraídas por PDF.js estão em escala 1 e origem visual no topo.
+    const x = selected.x;
+    const topY = selected.y;
+    const w = Number(rectWidth.value)||selected.width;
+    const h = Number(rectHeight.value)||selected.height;
+    const pad = Number(padding.value)||0;
+    const size = Number(fontSize.value)||8;
+
+    const y = ph - topY - h;
+
+    page.drawRectangle({
+      x:x-pad,
+      y:y-pad,
+      width:w+pad*2,
+      height:h+pad*2,
+      color:PDFLib.rgb(1,1,1),
+      borderWidth:0
+    });
+
+    const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+    const lines = wrapText(text,font,size,Math.max(10,w-pad*2));
+    const lineHeight = size*1.15;
+
+    lines.forEach((line,i)=>{
+      const lineY = y + h - size - pad - (i*lineHeight);
+      if(lineY > y){
+        page.drawText(line,{
+          x:x+pad,
+          y:lineY,
+          size,
+          font,
+          color:PDFLib.rgb(0,0,0)
+        });
+      }
+    });
+
+    workingBytes = await pdfDoc.save();
+
+    // Reabre para atualizar a prévia
+    pageTextCache.clear();
+    pdfjsDoc = await pdfjsLib.getDocument({data:workingBytes.slice()}).promise;
+    await renderPage();
+
+    downloadBtn.disabled=false;
+    applyBtn.disabled=false;
+    applyBtn.textContent="Aplicar alteração";
+    setStatus("Alteração aplicada. Confira a prévia e clique em <b>Baixar PDF alterado</b>.", "ok");
+  };
+
+  downloadBtn.onclick = ()=>{
+    if(!workingBytes) return;
+    const blob = new Blob([workingBytes],{type:"application/pdf"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url;
+    a.download="documento_alterado.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  };
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, m=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[m]));
+  }
+</script>
+</body>
+</html>
