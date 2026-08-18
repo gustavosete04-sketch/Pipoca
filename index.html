@@ -3,176 +3,61 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Revisor PDF - Cliente/Destinatário v3</title>
-
-<!-- PDF.js: leitura/renderização. pdf-lib: geração da cópia de revisão. -->
+<title>Editor de Revisão DANFE v4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-
 <style>
-:root{
-  --bg:#07101e;--panel:#0e1930;--panel2:#111f3b;--text:#edf5ff;--muted:#97aac7;
-  --line:rgba(255,255,255,.11);--a:#62e5ff;--b:#8d7cff;--ok:#65e6a8;
-  --warn:#ffd06a;--bad:#ff7d9a;--focus:#ffb13b;--shadow:0 18px 55px rgba(0,0,0,.42)
-}
-*{box-sizing:border-box}
-html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:
-radial-gradient(circle at 10% 0,rgba(98,229,255,.10),transparent 28%),
-radial-gradient(circle at 95% 5%,rgba(141,124,255,.11),transparent 30%),var(--bg);color:var(--text)}
-button,input,select{font:inherit}
-button{border:0;cursor:pointer}
-.app{max-width:1550px;margin:auto;padding:18px}
-.top{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:14px}
-.brand h1{font-size:23px;margin:0}
-.brand p{margin:5px 0 0;font-size:12px;color:var(--muted)}
-.badges{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
-.badge{font-size:10px;color:var(--muted);padding:7px 9px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.025)}
-.badge.ok{color:#baffde;border-color:rgba(101,230,168,.25);background:rgba(101,230,168,.06)}
-.layout{display:grid;grid-template-columns:420px 1fr;gap:14px}
-.panel{background:linear-gradient(180deg,rgba(255,255,255,.026),rgba(255,255,255,.012));border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
-.side{padding:14px;position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto}
-.viewer{overflow:hidden;min-height:80vh}
-.sec{padding:0 0 13px;margin:0 0 13px;border-bottom:1px solid var(--line)}
-.sec:last-child{border:0;margin:0;padding:0}
-.sec h3{font-size:13px;margin:0 0 9px}
-.drop{display:block;padding:15px;border-radius:14px;border:1.5px dashed rgba(98,229,255,.38);text-align:center;background:rgba(98,229,255,.04);transition:.15s}
-.drop:hover,.drop.drag{background:rgba(98,229,255,.09);border-color:var(--a)}
-.drop b{display:block;font-size:13px;margin-bottom:4px}.drop span{font-size:10px;color:var(--muted)}
-input[type=file]{display:none}
-.status{font-size:10.5px;line-height:1.45;padding:9px 10px;border:1px solid var(--line);border-radius:10px;color:var(--muted);background:rgba(255,255,255,.02)}
-.status.ok{color:#bfffe1;border-color:rgba(101,230,168,.24);background:rgba(101,230,168,.055)}
-.status.warn{color:#ffe1a2;border-color:rgba(255,208,106,.24);background:rgba(255,208,106,.05)}
-.status.bad{color:#ffc0cf;border-color:rgba(255,125,154,.25);background:rgba(255,125,154,.05)}
-.input{width:100%;border:1px solid var(--line);background:#0a1428;color:var(--text);border-radius:10px;padding:9px 10px;outline:none}
-.input:focus{border-color:rgba(98,229,255,.55);box-shadow:0 0 0 2px rgba(98,229,255,.06)}
-label.t{display:block;font-size:9.5px;color:var(--muted);margin:0 0 5px}
-.fields{display:grid;gap:7px}
-.field{border:1px solid var(--line);border-radius:11px;padding:8px;background:rgba(255,255,255,.018);transition:.15s}
-.field.selected{border-color:rgba(255,177,59,.55);background:rgba(255,177,59,.045)}
-.field.changed{border-color:rgba(101,230,168,.28);background:rgba(101,230,168,.035)}
-.ftop{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px}
-.ftop b{font-size:10.5px}.ftop small{font-size:8.5px;color:var(--muted)}
-.current{font-size:9.5px;color:#aebfda;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
-.field input{padding:8px 9px;font-size:11px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.btns{display:grid;gap:7px}
-.btn{padding:10px 11px;border-radius:10px;background:#1a2947;color:var(--text);font-size:11px;font-weight:750}
-.btn:hover{filter:brightness(1.08)}
-.btn:disabled{opacity:.42;cursor:not-allowed;filter:none}
-.btn.primary{background:linear-gradient(135deg,var(--a),var(--b));color:#06101e}
-.btn.ok{background:linear-gradient(135deg,#5de4a6,#7ef0d7);color:#061a12}
-.btn.ghost{background:transparent;border:1px solid var(--line)}
-.btn.bad{background:rgba(255,125,154,.08);border:1px solid rgba(255,125,154,.2);color:#ffb2c4}
-.note{font-size:9.5px;line-height:1.5;color:var(--muted)}
-.safe{font-size:9.5px;line-height:1.5;color:#ffe0a0;border:1px solid rgba(255,208,106,.20);background:rgba(255,208,106,.045);padding:8px;border-radius:9px}
-.bar{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.018)}
-.group{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.mini{padding:7px 9px;border-radius:9px;background:#1a2947;color:#dce8ff;font-size:10px}
-.mini:disabled{opacity:.4}.info{font-size:10px;color:var(--muted)}
-.stage{min-height:75vh;display:flex;justify-content:center;align-items:flex-start;overflow:auto;padding:22px;
-background:linear-gradient(45deg,rgba(255,255,255,.014) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.014) 75%),
-linear-gradient(45deg,rgba(255,255,255,.014) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.014) 75%);
-background-size:30px 30px;background-position:0 0,15px 15px}
-.paper{position:relative;background:#fff;box-shadow:0 20px 55px rgba(0,0,0,.55);line-height:0}
-.paper canvas{display:block}
-.overlay{position:absolute;inset:0;pointer-events:none}
-.sectionBox{position:absolute;border:2px solid rgba(98,229,255,.62);background:rgba(98,229,255,.045);display:none}
-.sectionBox::before{content:"CLIENTE / DESTINATÁRIO";position:absolute;top:-18px;left:-2px;background:#1ca8c6;color:#fff;font:700 8px/1 Arial;padding:4px 6px;border-radius:4px}
-.fieldBox{position:absolute;border:2px solid #ffad2f;background:rgba(255,173,47,.12);display:none}
-.fieldBox::after{content:attr(data-label);position:absolute;top:-18px;left:-2px;background:#ffad2f;color:#2b1600;font:700 8px/1 Arial;padding:4px 6px;border-radius:4px;white-space:nowrap}
-.callout{position:absolute;display:none;min-width:130px;max-width:280px;padding:7px 8px;border-radius:8px;background:#101a2d;color:#fff;border:1px solid rgba(255,255,255,.18);font:10px/1.35 Arial;box-shadow:0 9px 24px rgba(0,0,0,.32)}
-.callout b{color:#8cf2c4}
-.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:5px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.hidden{display:none!important}
-@media(max-width:1000px){.layout{grid-template-columns:1fr}.side{position:static;max-height:none}.viewer{min-height:60vh}}
+:root{--bg:#07111f;--p:#0e1b31;--t:#eef5ff;--m:#93a7c5;--l:rgba(255,255,255,.11);--a:#63e6ff;--b:#8d7cff;--ok:#62e6a6;--w:#ffb33b;--bad:#ff7896}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,rgba(99,230,255,.10),transparent 28%),var(--bg);color:var(--t);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
+.app{max-width:1500px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.top h1{margin:0;font-size:22px}.top p{margin:5px 0 0;color:var(--m);font-size:12px}
+.grid{display:grid;grid-template-columns:410px 1fr;gap:14px}.panel{background:rgba(255,255,255,.025);border:1px solid var(--l);border-radius:18px;box-shadow:0 18px 55px rgba(0,0,0,.4)}
+.side{padding:14px;position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto}.sec{padding-bottom:13px;margin-bottom:13px;border-bottom:1px solid var(--l)}.sec:last-child{border:0;margin:0}
+.drop{display:block;border:1.5px dashed rgba(99,230,255,.4);border-radius:14px;padding:15px;text-align:center;background:rgba(99,230,255,.04);cursor:pointer}.drop b{display:block}.drop small{color:var(--m)}input[type=file]{display:none}
+.status{font-size:11px;line-height:1.45;color:var(--m);border:1px solid var(--l);border-radius:10px;padding:9px;background:rgba(255,255,255,.02)}.status.ok{color:#bcffdf;border-color:rgba(98,230,166,.25);background:rgba(98,230,166,.05)}.status.warn{color:#ffe0a2;border-color:rgba(255,179,59,.25);background:rgba(255,179,59,.05)}.status.bad{color:#ffc0cf;border-color:rgba(255,120,150,.25)}
+.fields{display:grid;gap:8px}.f{border:1px solid var(--l);border-radius:11px;padding:8px;background:rgba(255,255,255,.02)}.f.changed{border-color:rgba(98,230,166,.35);background:rgba(98,230,166,.04)}.f b{font-size:11px}.orig{font-size:9px;color:var(--m);margin:4px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.in{width:100%;padding:9px 10px;border-radius:9px;border:1px solid var(--l);background:#091429;color:var(--t);outline:none}.in:focus{border-color:rgba(99,230,255,.55)}
+.btn{width:100%;padding:10px 11px;border:0;border-radius:10px;background:#1a2a49;color:var(--t);font-weight:750;cursor:pointer;margin-top:7px}.btn.ok{background:linear-gradient(135deg,#5ce3a3,#80efd9);color:#071a13}.btn.primary{background:linear-gradient(135deg,var(--a),var(--b));color:#06101e}.btn:disabled{opacity:.4;cursor:not-allowed}
+.note{font-size:10px;line-height:1.5;color:#ffe1a5;border:1px solid rgba(255,179,59,.22);background:rgba(255,179,59,.05);padding:9px;border-radius:10px}
+.viewer{overflow:hidden}.bar{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--l)}.mini{padding:7px 9px;border:0;border-radius:8px;background:#1a2a49;color:#fff;cursor:pointer}.stage{min-height:75vh;padding:22px;overflow:auto;display:flex;justify-content:center;align-items:flex-start;background:rgba(255,255,255,.015)}
+.paper{position:relative;background:#fff;box-shadow:0 20px 55px rgba(0,0,0,.5);line-height:0}.paper canvas{display:block}.ov{position:absolute;inset:0;pointer-events:none}.box{position:absolute;border:2px solid #ffad2f;background:rgba(255,173,47,.12);display:none}.box:after{content:attr(data-label);position:absolute;top:-18px;left:-2px;background:#ffad2f;color:#261200;font:700 8px Arial;padding:4px 6px;border-radius:4px}.previewText{position:absolute;display:none;background:#fff;color:#000;font-family:Arial,sans-serif;white-space:nowrap;overflow:hidden}
+.water{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:rgba(220,0,0,.22);font:800 48px Arial;transform:rotate(-28deg);pointer-events:none}
+@media(max-width:980px){.grid{grid-template-columns:1fr}.side{position:static;max-height:none}}
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="top">
-    <div class="brand">
-      <h1>Revisor PDF - Cliente/Destinatário v3</h1>
-      <p>Reconhece somente o bloco do cliente. Emitente e transportador ficam fora da busca.</p>
-    </div>
-    <div class="badges">
-      <div class="badge ok">⚡ leitura única + cache</div>
-      <div class="badge">cliente apenas</div>
-      <div class="badge">sem seleção manual</div>
-    </div>
-  </div>
-
-  <div class="layout">
+  <div class="top"><div><h1>Editor de Revisão DANFE v4</h1><p>Edita visualmente os campos do cliente na prévia e gera um PDF marcado como editado.</p></div></div>
+  <div class="grid">
     <aside class="panel side">
-      <section class="sec">
-        <h3>1. Abrir PDF</h3>
-        <label id="drop" class="drop" for="file">
-          <b>Arraste o PDF ou clique aqui</b>
-          <span>O documento é processado no navegador.</span>
-        </label>
+      <div class="sec">
+        <label class="drop" for="file"><b>Abrir PDF</b><small>Arraste ou clique para escolher</small></label>
         <input id="file" type="file" accept="application/pdf,.pdf">
         <div id="status" class="status" style="margin-top:8px">Aguardando PDF.</div>
-      </section>
+      </div>
 
-      <section class="sec">
-        <h3>2. Campo do cliente</h3>
-        <label class="t" for="focusField">Ir direto para</label>
-        <select id="focusField" class="input" disabled>
-          <option value="">Selecione um campo...</option>
-        </select>
-        <div id="scopeInfo" class="status" style="margin-top:8px">A seção do cliente ainda não foi localizada.</div>
-      </section>
+      <div class="sec">
+        <div class="note">O editor altera somente os campos do bloco <b>Destinatário/Remetente</b>. Endereço do emitente e do transportador são ignorados. O PDF exportado recebe marcação visível de <b>DOCUMENTO EDITADO / SEM VALIDADE FISCAL</b>.</div>
+      </div>
 
-      <section class="sec">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-          <h3 style="margin:0">3. Ver e corrigir</h3>
-          <span id="changeCount" style="font-size:9px;color:var(--muted)">0 alterações</span>
-        </div>
-        <div id="fields" class="fields">
-          <div class="status">Abra um PDF. Os dados do destinatário aparecerão aqui automaticamente.</div>
-        </div>
-      </section>
+      <div class="sec">
+        <div id="fields" class="fields"><div class="status">Abra o PDF para carregar os dados do cliente.</div></div>
+      </div>
 
-      <section class="sec">
-        <h3>4. Cópia de revisão</h3>
-        <div class="safe">
-          O arquivo gerado mantém o DANFE original e acrescenta uma folha de correções claramente marcada
-          como <b>SEM VALIDADE FISCAL</b>. Ele não substitui os dados fiscais do documento original.
-        </div>
-        <div class="btns" style="margin-top:8px">
-          <button id="generate" class="btn ok" disabled>Gerar cópia de revisão</button>
-          <button id="download" class="btn primary" disabled>Baixar PDF de revisão</button>
-          <button id="reset" class="btn bad" disabled>Desfazer todas as correções</button>
-        </div>
-      </section>
-
-      <div class="note">
-        Se “Endereço” for escolhido, a busca fica limitada ao campo Endereço dentro de
-        <b>Destinatário/Remetente</b>. Um “Endereço” do transportador não entra nos resultados.
+      <div class="sec">
+        <button id="exportBtn" class="btn ok" disabled>Gerar PDF editado</button>
+        <button id="downloadBtn" class="btn primary" disabled>Baixar PDF editado</button>
       </div>
     </aside>
 
     <main class="panel viewer">
       <div class="bar">
-        <div class="group">
-          <button id="prev" class="mini" disabled>◀</button>
-          <button id="next" class="mini" disabled>▶</button>
-          <span id="pageInfo" class="info">Nenhum PDF</span>
-        </div>
-        <div class="group">
-          <button id="zoomOut" class="mini" disabled>−</button>
-          <span id="zoomInfo" class="info">100%</span>
-          <button id="zoomIn" class="mini" disabled>+</button>
-        </div>
+        <div><button id="prev" class="mini" disabled>◀</button> <button id="next" class="mini" disabled>▶</button> <span id="pageInfo" style="font-size:11px;color:#93a7c5;margin-left:7px">Nenhum PDF</span></div>
+        <div><button id="zm" class="mini" disabled>−</button> <button id="zp" class="mini" disabled>+</button></div>
       </div>
       <div class="stage">
         <div id="paper" class="paper">
           <canvas id="canvas"></canvas>
-          <div class="overlay">
-            <div id="sectionBox" class="sectionBox"></div>
-            <div id="fieldBox" class="fieldBox"></div>
-            <div id="callout" class="callout"></div>
-          </div>
+          <div class="ov"><div id="box" class="box"></div><div id="previewText" class="previewText"></div><div id="water" class="water">DOCUMENTO EDITADO</div></div>
         </div>
       </div>
     </main>
@@ -180,631 +65,149 @@ background-size:30px 30px;background-position:0 0,15px 15px}
 </div>
 
 <script>
-(function(){
-"use strict";
-
-const $=id=>document.getElementById(id);
-const E={
-  file:$("file"),drop:$("drop"),status:$("status"),focusField:$("focusField"),scopeInfo:$("scopeInfo"),
-  fields:$("fields"),changeCount:$("changeCount"),generate:$("generate"),download:$("download"),reset:$("reset"),
-  prev:$("prev"),next:$("next"),pageInfo:$("pageInfo"),zoomOut:$("zoomOut"),zoomIn:$("zoomIn"),zoomInfo:$("zoomInfo"),
-  paper:$("paper"),canvas:$("canvas"),sectionBox:$("sectionBox"),fieldBox:$("fieldBox"),callout:$("callout")
-};
+(async function(){
+const $=id=>document.getElementById(id), E={file:$("file"),status:$("status"),fields:$("fields"),exportBtn:$("exportBtn"),downloadBtn:$("downloadBtn"),prev:$("prev"),next:$("next"),pageInfo:$("pageInfo"),zm:$("zm"),zp:$("zp"),paper:$("paper"),canvas:$("canvas"),box:$("box"),previewText:$("previewText"),water:$("water")};
 const ctx=E.canvas.getContext("2d",{alpha:false});
+pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-const EDITABLE = [
-  "Nome / Razão Social","CNPJ/CPF","Inscrição Estadual","Endereço","Bairro","CEP","Município","UF","Fone/Fax"
-];
-const BOUNDARY_LABELS = [
-  ...EDITABLE,"Data emissão","Data saída","Hora saída"
-];
-const END_HEADINGS = [
-  "Faturas","Cálculo do imposto","Calculo do imposto","Transportador/Volumes transportados",
-  "Itens da nota fiscal","Cálculo do ISSQN","Calculo do ISSQN","Dados adicionais"
-];
+let src=null,out=null,pdf=null,pageNo=1,scale=1.25,fields=[],active=null;
+const wanted=["Nome / Razão Social","CNPJ/CPF","Inscrição Estadual","Endereço","Bairro","CEP","Município","UF","Fone/Fax"];
 
-let srcBytes=null, outBytes=null, pdfDoc=null, pageNo=1, scale=1.22, renderToken=0;
-let pageCache=new Map();
-let clientSections=new Map(); // page -> {top,bottom,x0,x1,fields:Map}
-let activeFieldKey="";
-let corrections=new Map(); // key -> newText
+function norm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim()}
+function setStatus(t,c=""){E.status.className="status"+(c?" "+c:"");E.status.innerHTML=t}
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function changed(){return fields.filter(f=>f.newValue!==f.value)}
 
-function norm(s){
-  return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .toLowerCase().replace(/\s+/g," ").trim();
+async function readItems(p){
+  const pg=await pdf.getPage(p), vp=pg.getViewport({scale:1}), tc=await pg.getTextContent();
+  return tc.items.filter(i=>String(i.str||"").trim()).map(i=>{
+    const tr=pdfjsLib.Util.transform(vp.transform,i.transform), h=Math.max(5,Math.abs(i.height||tr[3]||7));
+    return {text:String(i.str).trim(),x:tr[4],y:tr[5]-h,w:Math.max(1,i.width||1),h,b:tr[5]};
+  }).sort((a,b)=>a.y-b.y||a.x-b.x);
 }
-function esc(s){
-  return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-}
-function setStatus(html,type=""){
-  E.status.className="status"+(type?" "+type:"");
-  E.status.innerHTML=html;
-}
-function setScope(html,type=""){
-  E.scopeInfo.className="status"+(type?" "+type:"");
-  E.scopeInfo.innerHTML=html;
-}
-function enableViewer(v){
-  [E.prev,E.next,E.zoomOut,E.zoomIn].forEach(x=>x.disabled=!v);
-}
-function validPdfHeader(bytes){
-  if(!bytes || bytes.length<5) return false;
-  return String.fromCharCode(...bytes.slice(0,5))==="%PDF-";
-}
-function fieldKey(page,label){return `${page}::${label}`;}
-function getCorrection(page,label){return corrections.get(fieldKey(page,label)) ?? null;}
-function hasChanged(field){
-  const v=getCorrection(field.page,field.label);
-  return v!==null && String(v)!==String(field.current||"");
-}
-function currentChanges(){
-  const arr=[];
-  for(const sec of clientSections.values()){
-    for(const field of sec.fields.values()){
-      if(hasChanged(field)){
-        arr.push({...field,newText:getCorrection(field.page,field.label)});
-      }
-    }
+function lines(items){
+  const out=[];
+  for(const it of items){
+    let l=out.find(x=>Math.abs(x.y-it.y)<3);
+    if(!l){l={y:it.y,items:[]};out.push(l)}
+    l.items.push(it);l.y=l.items.reduce((s,z)=>s+z.y,0)/l.items.length;
   }
-  return arr;
+  for(const l of out){l.items.sort((a,b)=>a.x-b.x);l.text=l.items.map(x=>x.text).join(" ");l.x0=Math.min(...l.items.map(x=>x.x));l.x1=Math.max(...l.items.map(x=>x.x+x.w));l.bottom=Math.max(...l.items.map(x=>x.y+x.h))}
+  return out.sort((a,b)=>a.y-b.y||a.x0-b.x0);
 }
-function updateButtons(){
-  const n=currentChanges().length;
-  E.changeCount.textContent=`${n} alteração${n===1?"":"ões"}`;
-  E.generate.disabled=n===0;
-  E.reset.disabled=n===0;
-  if(n===0){outBytes=null;E.download.disabled=true;}
-}
-
-function librariesReady(){
-  return !!(window.pdfjsLib && window.PDFLib);
-}
-function initLibraries(){
-  if(!librariesReady()){
-    setStatus("As bibliotecas de PDF não carregaram. Verifique a internet e recarregue a página.","bad");
-    return false;
-  }
-  pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-  return true;
-}
-
-function tokenizeTextItem(raw, x, y, w, h){
-  const text=String(raw||"").trim();
-  if(!text) return [];
-  const parts=[...text.matchAll(/\S+/g)];
-  if(parts.length<=1) return [{text,x,y,w,h,x1:x+w,bottom:y+h,cx:x+w/2}];
-  const totalChars=Math.max(1,text.length);
-  return parts.map(m=>{
-    const start=m.index||0, len=m[0].length;
-    const tx=x+w*(start/totalChars);
-    const tw=Math.max(1,w*(len/totalChars));
-    return {text:m[0],x:tx,y,w:tw,h,x1:tx+tw,bottom:y+h,cx:tx+tw/2};
-  });
-}
-
-function groupLines(tokens,tol=3){
-  const sorted=[...tokens].sort((a,b)=>a.y-b.y || a.x-b.x);
-  const lines=[];
-  for(const item of sorted){
-    let line=null;
-    for(let k=lines.length-1;k>=Math.max(0,lines.length-6);k--){
-      if(Math.abs(lines[k].y-item.y)<=tol){line=lines[k];break;}
-    }
-    if(!line){
-      line={y:item.y,items:[]};
-      lines.push(line);
-    }
-    line.items.push(item);
-    line.y=line.items.reduce((s,z)=>s+z.y,0)/line.items.length;
-  }
-  for(const l of lines){
-    l.items.sort((a,b)=>a.x-b.x);
-    l.top=Math.min(...l.items.map(i=>i.y));
-    l.bottom=Math.max(...l.items.map(i=>i.bottom));
-    l.x0=Math.min(...l.items.map(i=>i.x));
-    l.x1=Math.max(...l.items.map(i=>i.x1));
-    l.text=l.items.map(i=>i.text).join(" ");
-  }
-  return lines.sort((a,b)=>a.top-b.top || a.x0-b.x0);
-}
-
-async function getPageData(p){
-  if(pageCache.has(p)) return pageCache.get(p);
-  const page=await pdfDoc.getPage(p);
-  const vp=page.getViewport({scale:1});
-  const tc=await page.getTextContent({disableCombineTextItems:false});
-  const rawItems=[];
-  const tokens=[];
-  for(const it of tc.items){
-    const t=String(it.str||"").trim();
-    if(!t) continue;
-    const tx=pdfjsLib.Util.transform(vp.transform,it.transform);
-    const h=Math.max(4.5,Math.abs(it.height||tx[3]||7));
-    const x=tx[4], y=tx[5]-h, w=Math.max(1,it.width||1);
-    const raw={text:t,x,y,w,h,x1:x+w,bottom:y+h,cx:x+w/2};
-    rawItems.push(raw);
-    tokens.push(...tokenizeTextItem(t,x,y,w,h));
-  }
-  const lines=groupLines(tokens,3);
-  const data={page,viewport:vp,rawItems,tokens,lines,width:vp.width,height:vp.height};
-  pageCache.set(p,data);
-  return data;
-}
-
-function phraseTokens(s){return norm(s).split(" ");}
-
-function findPhraseInLine(line,phrase){
-  const target=phraseTokens(phrase);
-  const ts=line.items.map(i=>norm(i.text));
-  for(let i=0;i<=ts.length-target.length;i++){
-    let ok=true;
-    for(let j=0;j<target.length;j++){
-      if(ts[i+j]!==target[j]){ok=false;break;}
-    }
-    if(ok){
-      const arr=line.items.slice(i,i+target.length);
-      return {
-        phrase,
-        x0:arr[0].x,
-        x1:arr[arr.length-1].x1,
-        top:Math.min(...arr.map(z=>z.y)),
-        bottom:Math.max(...arr.map(z=>z.bottom)),
-        line
-      };
-    }
-  }
-  return null;
-}
-
-function lineContains(line,text){
-  return norm(line.text).includes(norm(text));
-}
-
-function findClientSection(data){
-  const lines=data.lines;
-  let startIndex=lines.findIndex(l=>{
+function findLabel(ls,label,top,bottom){
+  const target=norm(label);
+  for(const l of ls){
+    if(l.y<top||l.y>bottom)continue;
     const n=norm(l.text);
-    return n.includes("destinatario/remetente") ||
-           n.includes("destinatario / remetente") ||
-           n==="destinatario" ||
-           n.startsWith("destinatario ");
-  });
-  if(startIndex<0) return null;
-
-  const startLine=lines[startIndex];
-  let endLine=null;
-  for(let i=startIndex+1;i<lines.length;i++){
-    if(END_HEADINGS.some(h=>lineContains(lines[i],h))){
-      endLine=lines[i];break;
+    if(n.includes(target)){
+      const it=l.items.find(x=>norm(x.text)===target)||l.items.find(x=>norm(x.text).includes(target));
+      if(it)return {line:l,x:it.x,y:it.y,w:it.w,h:it.h};
     }
-  }
-  const top=startLine.bottom+0.5;
-  const bottom=endLine ? endLine.top-0.5 : Math.min(data.height,top+95);
-
-  const inSectionLines=lines.filter(l=>l.top>=top && l.bottom<=bottom);
-  const matches=[];
-  for(const line of inSectionLines){
-    for(const label of BOUNDARY_LABELS){
-      const m=findPhraseInLine(line,label);
-      if(m) matches.push({...m,label});
-    }
-  }
-  if(!matches.length) return null;
-
-  // Agrupa rótulos que pertencem à mesma linha lógica da tabela.
-  const rows=[];
-  for(const m of [...matches].sort((a,b)=>a.top-b.top || a.x0-b.x0)){
-    let row=rows.find(r=>Math.abs(r.top-m.top)<=6);
-    if(!row){row={top:m.top,matches:[]};rows.push(row);}
-    row.matches.push(m);
-    row.top=Math.min(...row.matches.map(x=>x.top));
-  }
-  rows.sort((a,b)=>a.top-b.top);
-
-  const fields=new Map();
-  for(let ri=0;ri<rows.length;ri++){
-    const row=rows[ri];
-    row.matches.sort((a,b)=>a.x0-b.x0);
-    const nextRowTop=ri+1<rows.length ? rows[ri+1].top : bottom;
-
-    // A linha de valor é a linha de texto logo abaixo dos rótulos.
-    // Linhas compostas somente por rótulos auxiliares (ex.: Fone/Fax) são ignoradas.
-    const candidates=inSectionLines.filter(l=>l.top>row.top+4 && l.top<nextRowTop-0.4);
-    let valueLine=null;
-    if(candidates.length){
-      valueLine=[...candidates].sort((a,b)=>{
-        const aw=a.items.reduce((s,z)=>s+z.w,0);
-        const bw=b.items.reduce((s,z)=>s+z.w,0);
-        return bw-aw;
-      })[0];
-    }
-
-    for(let mi=0;mi<row.matches.length;mi++){
-      const m=row.matches[mi];
-      if(!EDITABLE.includes(m.label)) continue;
-      const x0=m.x0;
-      const x1=mi+1<row.matches.length ? row.matches[mi+1].x0-1 : data.width-18;
-
-      let valueItems=[];
-      if(valueLine){
-        valueItems=valueLine.items.filter(it=>it.cx>=x0-1 && it.cx<x1);
-      }
-      const current=valueItems.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
-
-      const valTop=valueLine ? Math.max(valueLine.top-0.7,row.top+4.5) : row.top+7;
-      const valBottom=valueLine ? Math.min(valueLine.bottom+0.7,nextRowTop-0.7) : Math.min(nextRowTop-0.7,row.top+16);
-
-      fields.set(m.label,{
-        page:0,label:m.label,current,
-        x:x0,y:valTop,w:Math.max(12,x1-x0),h:Math.max(7,valBottom-valTop),
-        rowTop:row.top,cellX0:x0,cellX1:x1
-      });
-    }
-  }
-
-  if(!fields.has("Endereço")) return null;
-
-  const x0=Math.max(0,Math.min(...matches.map(m=>m.x0))-5);
-  const x1=Math.min(data.width,Math.max(...matches.map(m=>m.x0))+165);
-  return {top:startLine.top,bottom,x0,x1,fields,heading:startLine.text};
-}
-
-async function locateClientSections(){
-  clientSections.clear();
-  let firstFound=0;
-
-  // Página 1 primeiro: é onde o bloco normalmente está e deixa a abertura rápida.
-  const order=[1,...Array.from({length:Math.max(0,pdfDoc.numPages-1)},(_,i)=>i+2)];
-  for(const p of order){
-    const data=await getPageData(p);
-    const sec=findClientSection(data);
-    if(sec){
-      for(const f of sec.fields.values()) f.page=p;
-      clientSections.set(p,sec);
-      if(!firstFound) firstFound=p;
-    }
-    // A interface fica rápida em PDFs grandes: depois de achar na página 1,
-    // as demais páginas são lidas somente quando navegadas.
-    if(firstFound===1) break;
-  }
-  return firstFound;
-}
-
-async function ensureSectionForPage(p){
-  if(clientSections.has(p)) return clientSections.get(p);
-  const data=await getPageData(p);
-  const sec=findClientSection(data);
-  if(sec){
-    for(const f of sec.fields.values()) f.page=p;
-    clientSections.set(p,sec);
-    return sec;
   }
   return null;
 }
 
-async function renderPage(){
-  if(!pdfDoc) return;
-  const token=++renderToken;
-  const page=await pdfDoc.getPage(pageNo);
-  const vp=page.getViewport({scale});
-  const dpr=Math.min(window.devicePixelRatio||1,1.75);
-  E.canvas.width=Math.round(vp.width*dpr);
-  E.canvas.height=Math.round(vp.height*dpr);
-  E.canvas.style.width=vp.width+"px";
-  E.canvas.style.height=vp.height+"px";
-  E.paper.style.width=vp.width+"px";
-  E.paper.style.height=vp.height+"px";
-  await page.render({
-    canvasContext:ctx,
-    viewport:vp,
-    transform:dpr!==1?[dpr,0,0,dpr,0,0]:null,
-    background:"white"
-  }).promise;
-  if(token!==renderToken) return;
-
-  E.pageInfo.textContent=`Página ${pageNo} de ${pdfDoc.numPages}`;
-  E.zoomInfo.textContent=Math.round(scale/1.22*100)+"%";
-  await ensureSectionForPage(pageNo);
-  renderFields();
-  renderHighlights();
-}
-
-function renderHighlights(){
-  const sec=clientSections.get(pageNo);
-  if(!sec){
-    E.sectionBox.style.display="none";
-    E.fieldBox.style.display="none";
-    E.callout.style.display="none";
-    return;
+async function detectClient(p){
+  const items=await readItems(p), ls=lines(items);
+  const head=ls.find(l=>norm(l.text).includes("destinatario/remetente")||norm(l.text).includes("destinatario / remetente"));
+  if(!head)return [];
+  const end=ls.find(l=>l.y>head.y && ["faturas","calculo do imposto","cálculo do imposto","transportador/volumes transportados"].some(x=>norm(l.text).includes(norm(x))));
+  const top=head.bottom+1,bottom=end?end.y-1:top+100;
+  const labels=[];
+  for(const lab of wanted){
+    const m=findLabel(ls,lab,top,bottom);
+    if(m)labels.push({label:lab,...m});
   }
-  E.sectionBox.style.display="block";
-  E.sectionBox.style.left=sec.x0*scale+"px";
-  E.sectionBox.style.top=sec.top*scale+"px";
-  E.sectionBox.style.width=Math.max(20,(sec.x1-sec.x0)*scale)+"px";
-  E.sectionBox.style.height=Math.max(20,(sec.bottom-sec.top)*scale)+"px";
-
-  const f=sec.fields.get(activeFieldKey);
-  if(!f){
-    E.fieldBox.style.display="none";
-    E.callout.style.display="none";
-    return;
+  labels.sort((a,b)=>a.y-b.y||a.x-b.x);
+  const result=[];
+  for(let i=0;i<labels.length;i++){
+    const a=labels[i];
+    const same=labels.filter(z=>Math.abs(z.y-a.y)<4).sort((x,y)=>x.x-y.x);
+    const pos=same.findIndex(z=>z.label===a.label);
+    const right=pos>=0&&pos<same.length-1?same[pos+1].x-1:Math.max(a.x+80,520);
+    const nextY=Math.min(...labels.filter(z=>z.y>a.y+4).map(z=>z.y).concat([bottom]));
+    const vals=ls.filter(l=>l.y>a.y+4&&l.y<nextY-0.2).flatMap(l=>l.items).filter(it=>it.x+it.w/2>=a.x-1&&it.x+it.w/2<right);
+    const value=vals.map(v=>v.text).join(" ").replace(/\s+/g," ").trim();
+    const vy=vals.length?Math.min(...vals.map(v=>v.y)):a.y+8;
+    const vh=vals.length?Math.max(...vals.map(v=>v.y+v.h))-vy:10;
+    result.push({page:p,label:a.label,value,newValue:value,x:a.x,y:vy,w:Math.max(25,right-a.x),h:Math.max(8,vh)});
   }
-  E.fieldBox.style.display="block";
-  E.fieldBox.dataset.label=f.label;
-  E.fieldBox.style.left=f.x*scale+"px";
-  E.fieldBox.style.top=f.y*scale+"px";
-  E.fieldBox.style.width=f.w*scale+"px";
-  E.fieldBox.style.height=Math.max(8,f.h*scale)+"px";
-
-  const c=getCorrection(f.page,f.label);
-  if(c!==null && c!==f.current){
-    E.callout.style.display="block";
-    E.callout.innerHTML=`<b>Novo ${esc(f.label)}:</b><br>${esc(c)}`;
-    const left=Math.min((f.x+f.w+7)*scale,Math.max(0,E.canvas.clientWidth-285));
-    let top=(f.y-2)*scale;
-    if(top<20) top=(f.y+f.h+7)*scale;
-    E.callout.style.left=left+"px";
-    E.callout.style.top=top+"px";
-  }else{
-    E.callout.style.display="none";
-  }
-}
-
-function renderFocusOptions(){
-  const sec=clientSections.get(pageNo);
-  E.focusField.innerHTML='<option value="">Selecione um campo...</option>';
-  if(!sec){E.focusField.disabled=true;return;}
-  for(const label of EDITABLE){
-    if(!sec.fields.has(label)) continue;
-    const op=document.createElement("option");
-    op.value=label;op.textContent=label;
-    E.focusField.appendChild(op);
-  }
-  E.focusField.disabled=false;
-  if(activeFieldKey && sec.fields.has(activeFieldKey)) E.focusField.value=activeFieldKey;
+  return result;
 }
 
 function renderFields(){
-  const sec=clientSections.get(pageNo);
-  renderFocusOptions();
-  if(!sec){
-    E.fields.innerHTML='<div class="status warn">Esta página não possui um bloco de cliente reconhecido. Nenhum campo fora de Destinatário/Remetente será usado.</div>';
-    setScope("Cliente não localizado nesta página.","warn");
-    return;
-  }
-
-  setScope(`Seção reconhecida na página <b>${pageNo}</b>. Busca limitada ao cliente/destinatário.`,"ok");
   E.fields.innerHTML="";
-  for(const label of EDITABLE){
-    const f=sec.fields.get(label);
-    if(!f) continue;
-    const key=fieldKey(f.page,f.label);
-    const corr=corrections.has(key)?corrections.get(key):f.current;
-    const div=document.createElement("div");
-    div.className="field"+(activeFieldKey===label?" selected":"")+(corr!==f.current?" changed":"");
-    div.dataset.label=label;
-    div.innerHTML=`
-      <div class="ftop"><b>${esc(label)}</b><small>pág. ${f.page}</small></div>
-      <div class="current" title="${esc(f.current||"(vazio)") }">Original: ${esc(f.current||"(vazio)")}</div>
-      <input class="input" value="${esc(corr)}" aria-label="${esc(label)}">
-    `;
-    const inp=div.querySelector("input");
-    inp.addEventListener("focus",()=>{
-      activeFieldKey=label;
-      E.focusField.value=label;
-      [...E.fields.children].forEach(x=>x.classList.toggle("selected",x.dataset.label===label));
-      renderHighlights();
-    });
-    inp.addEventListener("input",()=>{
-      corrections.set(key,inp.value);
-      div.classList.toggle("changed",inp.value!==f.current);
-      outBytes=null;E.download.disabled=true;
-      updateButtons();
-      renderHighlights();
-    });
-    E.fields.appendChild(div);
+  if(!fields.length){E.fields.innerHTML='<div class="status warn">Não encontrei o bloco Destinatário/Remetente.</div>';return}
+  for(const f of fields){
+    const d=document.createElement("div");d.className="f"+(f.newValue!==f.value?" changed":"");
+    d.innerHTML=`<b>${esc(f.label)}</b><div class="orig">Original: ${esc(f.value||"(vazio)")}</div><input class="in" value="${esc(f.newValue)}">`;
+    const inp=d.querySelector("input");
+    inp.onfocus=()=>{active=f;showOverlay()};
+    inp.oninput=()=>{f.newValue=inp.value;d.classList.toggle("changed",f.newValue!==f.value);out=null;E.downloadBtn.disabled=true;E.exportBtn.disabled=changed().length===0;showOverlay()};
+    E.fields.appendChild(d);
   }
-  updateButtons();
+}
+function showOverlay(){
+  if(!active||active.page!==pageNo){E.box.style.display="none";E.previewText.style.display="none";return}
+  E.box.style.display="block";E.box.dataset.label=active.label;E.box.style.left=active.x*scale+"px";E.box.style.top=active.y*scale+"px";E.box.style.width=active.w*scale+"px";E.box.style.height=Math.max(10,active.h*scale)+"px";
+  if(active.newValue!==active.value){
+    E.previewText.style.display="block";E.previewText.style.left=active.x*scale+"px";E.previewText.style.top=active.y*scale+"px";E.previewText.style.width=active.w*scale+"px";E.previewText.style.height=Math.max(10,active.h*scale)+"px";E.previewText.style.fontSize=Math.max(7,active.h*.72*scale)+"px";E.previewText.style.lineHeight=Math.max(10,active.h*scale)+"px";E.previewText.textContent=active.newValue;E.water.style.display="flex";
+  }else{E.previewText.style.display="none";E.water.style.display=changed().length?"flex":"none"}
+}
+async function render(){
+  const pg=await pdf.getPage(pageNo),vp=pg.getViewport({scale}),dpr=Math.min(devicePixelRatio||1,1.7);
+  E.canvas.width=Math.round(vp.width*dpr);E.canvas.height=Math.round(vp.height*dpr);E.canvas.style.width=vp.width+"px";E.canvas.style.height=vp.height+"px";E.paper.style.width=vp.width+"px";E.paper.style.height=vp.height+"px";
+  await pg.render({canvasContext:ctx,viewport:vp,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null,background:"white"}).promise;
+  E.pageInfo.textContent=`Página ${pageNo} de ${pdf.numPages}`;showOverlay();
 }
 
-E.focusField.addEventListener("change",()=>{
-  const label=E.focusField.value;
-  if(!label) return;
-  activeFieldKey=label;
-  const sec=clientSections.get(pageNo);
-  const f=sec?.fields.get(label);
-  if(f){
-    renderFields();
-    renderHighlights();
-    const card=[...E.fields.children].find(x=>x.dataset.label===label);
-    if(card){
-      card.scrollIntoView({block:"nearest",behavior:"smooth"});
-      setTimeout(()=>card.querySelector("input")?.focus(),120);
-    }
-  }
-});
-
-async function loadPDF(file){
-  if(!initLibraries()) return;
-  if(!file){return;}
-  setStatus('<span class="spinner"></span>Abrindo e analisando o PDF...');
-
+E.file.onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;setStatus("Abrindo PDF...");
   try{
-    const bytes=new Uint8Array(await file.arrayBuffer());
-    if(!validPdfHeader(bytes)){
-      throw new Error("HEADER");
-    }
-    if(bytes.length>45*1024*1024){
-      setStatus("PDF grande. A abertura pode levar alguns segundos, mas o processamento continua local.","warn");
-    }
-
-    srcBytes=bytes;
-    outBytes=null;
-    corrections.clear();
-    clientSections.clear();
-    pageCache.clear();
-    activeFieldKey="";
-    E.download.disabled=true;
-
-    const task=pdfjsLib.getDocument({data:srcBytes.slice()});
-    pdfDoc=await task.promise;
-    pageNo=1;
-    enableViewer(true);
-
-    await renderPage();
-    const found=await locateClientSections();
-    if(found){
-      pageNo=found;
-      activeFieldKey="Endereço";
-      await renderPage();
-      setStatus(`PDF aberto. O bloco do cliente foi reconhecido e <b>Endereço</b> está pronto para edição de revisão.`,"ok");
-    }else{
-      renderFields();
-      setStatus("Não encontrei a seção Destinatário/Remetente como texto. O PDF pode estar escaneado ou ter outro modelo. Por segurança, não faço busca global em outros endereços.","warn");
-    }
-  }catch(err){
-    console.error(err);
-    pdfDoc=null;srcBytes=null;enableViewer(false);
-    if(err?.name==="PasswordException"){
-      setStatus("Este PDF está protegido por senha. Abra uma cópia sem proteção para analisar os campos.","bad");
-    }else if(err?.message==="HEADER"){
-      setStatus("O arquivo selecionado não possui uma estrutura PDF válida.","bad");
-    }else{
-      setStatus("Não foi possível abrir o PDF. Ele pode estar corrompido, protegido ou as bibliotecas podem não ter carregado.","bad");
-    }
-  }
-}
-
-E.file.addEventListener("change",e=>loadPDF(e.target.files[0]));
-["dragenter","dragover"].forEach(ev=>E.drop.addEventListener(ev,e=>{e.preventDefault();E.drop.classList.add("drag")}));
-["dragleave","drop"].forEach(ev=>E.drop.addEventListener(ev,e=>{e.preventDefault();E.drop.classList.remove("drag")}));
-E.drop.addEventListener("drop",e=>loadPDF(e.dataTransfer.files[0]));
-
-E.prev.onclick=async()=>{
-  if(!pdfDoc||pageNo<=1)return;
-  pageNo--;activeFieldKey="";await renderPage();
-};
-E.next.onclick=async()=>{
-  if(!pdfDoc||pageNo>=pdfDoc.numPages)return;
-  pageNo++;activeFieldKey="";await renderPage();
-};
-E.zoomOut.onclick=async()=>{if(!pdfDoc)return;scale=Math.max(.55,scale-.14);await renderPage();};
-E.zoomIn.onclick=async()=>{if(!pdfDoc)return;scale=Math.min(2.8,scale+.14);await renderPage();};
-
-E.reset.onclick=()=>{
-  corrections.clear();outBytes=null;E.download.disabled=true;
-  renderFields();renderHighlights();
-  setStatus("Todas as correções de revisão foram desfeitas.","ok");
+    src=new Uint8Array(await f.arrayBuffer());pdf=await pdfjsLib.getDocument({data:src.slice()}).promise;pageNo=1;
+    fields=await detectClient(1);fields.forEach(x=>x.newValue=x.value);
+    [E.prev,E.next,E.zm,E.zp].forEach(x=>x.disabled=false);
+    renderFields();await render();
+    if(fields.length){active=fields.find(x=>x.label==="Endereço")||fields[0];showOverlay();setStatus("Cliente localizado. Edite os campos abaixo; a prévia muda na hora.","ok")}
+    else setStatus("Não consegui reconhecer o bloco do cliente neste modelo.","warn");
+  }catch(err){console.error(err);setStatus("Falha ao abrir o PDF.","bad")}
 };
 
-function wrap(text,font,size,maxWidth){
-  const words=String(text||"").split(/\s+/).filter(Boolean),lines=[];let line="";
-  for(const word of words){
-    const t=line?line+" "+word:word;
-    if(!line || font.widthOfTextAtSize(t,size)<=maxWidth) line=t;
-    else{lines.push(line);line=word;}
-  }
-  if(line)lines.push(line);
-  return lines;
-}
-function fitLines(text,font,start,maxWidth,maxLines=3){
-  let size=start;
-  while(size>=7){
-    const lines=wrap(text,font,size,maxWidth);
-    if(lines.length<=maxLines)return{size,lines};
-    size-=.5;
-  }
-  return{size:7,lines:wrap(text,font,7,maxWidth).slice(0,maxLines)};
-}
+E.prev.onclick=async()=>{if(pageNo>1){pageNo--;await render()}};
+E.next.onclick=async()=>{if(pageNo<pdf.numPages){pageNo++;await render()}};
+E.zm.onclick=async()=>{scale=Math.max(.6,scale-.12);await render()};
+E.zp.onclick=async()=>{scale=Math.min(2.6,scale+.12);await render()};
 
-E.generate.onclick=async()=>{
-  const changes=currentChanges();
-  if(!srcBytes||!changes.length||!window.PDFLib)return;
-  E.generate.disabled=true;
-  E.generate.innerHTML='<span class="spinner"></span>Gerando...';
-  setStatus("Montando a cópia de revisão sem alterar os campos fiscais originais...","warn");
+function fitSize(font,text,max,start=9,min=5){
+  let s=start;while(s>min&&font.widthOfTextAtSize(text,s)>max)s-=.25;return s
+}
+E.exportBtn.onclick=async()=>{
+  const cs=changed();if(!cs.length)return;
+  setStatus("Gerando PDF editado e marcado...","warn");
   try{
-    const pdf=await PDFLib.PDFDocument.load(srcBytes.slice());
-    const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
-    const bold=await pdf.embedFont(PDFLib.StandardFonts.HelveticaBold);
-
-    const page=pdf.addPage([595.28,841.89]);
-    const W=page.getWidth(),H=page.getHeight();
-    page.drawRectangle({x:0,y:H-92,width:W,height:92,color:PDFLib.rgb(.05,.09,.17)});
-    page.drawText("CÓPIA DE REVISÃO - SEM VALIDADE FISCAL",{
-      x:34,y:H-48,size:18,font:bold,color:PDFLib.rgb(.92,.96,1)
-    });
-    page.drawText("Correções propostas para dados do cliente/destinatário",{
-      x:34,y:H-69,size:10,font,color:PDFLib.rgb(.65,.76,.90)
-    });
-
-    let y=H-125;
-    const left=34, col1=170, col2=365;
-    page.drawText("Campo",{x:left,y,size:9,font:bold,color:PDFLib.rgb(.12,.18,.28)});
-    page.drawText("Original",{x:col1,y,size:9,font:bold,color:PDFLib.rgb(.12,.18,.28)});
-    page.drawText("Correção proposta",{x:col2,y,size:9,font:bold,color:PDFLib.rgb(.12,.18,.28)});
-    y-=8;
-    page.drawLine({start:{x:left,y},end:{x:W-34,y},thickness:.8,color:PDFLib.rgb(.78,.82,.88)});
-    y-=20;
-
-    for(const c of changes){
-      if(y<100){
-        // Em caso de muitas correções, cria outra folha.
-        y=H-70;
-      }
-      page.drawText(c.label,{x:left,y,size:8,font:bold,color:PDFLib.rgb(.10,.15,.23)});
-      const oldFit=fitLines(c.current||"(vazio)",font,8,175,3);
-      const newFit=fitLines(c.newText||"(vazio)",font,8,185,3);
-      oldFit.lines.forEach((line,i)=>page.drawText(line,{x:col1,y:y-i*10,size:oldFit.size,font,color:PDFLib.rgb(.24,.29,.38)}));
-      newFit.lines.forEach((line,i)=>page.drawText(line,{x:col2,y:y-i*10,size:newFit.size,font,color:PDFLib.rgb(.04,.40,.25)}));
-      const rowH=Math.max(oldFit.lines.length,newFit.lines.length)*10+12;
-      y-=rowH;
-      page.drawLine({start:{x:left,y:y+4},end:{x:W-34,y:y+4},thickness:.4,color:PDFLib.rgb(.88,.90,.93)});
+    const doc=await PDFLib.PDFDocument.load(src.slice());
+    const font=await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+    const bold=await doc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    for(const c of cs){
+      const pg=doc.getPages()[c.page-1],ph=pg.getHeight();
+      const y=ph-c.y-c.h;
+      pg.drawRectangle({x:c.x-1,y:y-1,width:c.w+2,height:c.h+2,color:PDFLib.rgb(1,1,1)});
+      const size=fitSize(font,c.newValue,Math.max(10,c.w-3),Math.min(10,Math.max(6,c.h*.72)),5);
+      pg.drawText(c.newValue,{x:c.x+1,y:y+Math.max(1,(c.h-size)/2),size,font,color:PDFLib.rgb(0,0,0)});
     }
-
-    y=Math.max(45,y-8);
-    const note="Esta folha é apenas uma anotação de revisão. Os dados fiscais do DANFE original não foram substituídos.";
-    const noteLines=wrap(note,font,8,W-68);
-    noteLines.forEach((line,i)=>page.drawText(line,{x:34,y:y-i*11,size:8,font,color:PDFLib.rgb(.42,.18,.08)}));
-
-    pdf.setTitle("Cópia de revisão - sem validade fiscal");
-    outBytes=await pdf.save({useObjectStreams:true});
-    E.download.disabled=false;
-    setStatus(`Cópia de revisão pronta com <b>${changes.length}</b> correção${changes.length===1?"":"ões"}.`,"ok");
-  }catch(err){
-    console.error(err);
-    outBytes=null;E.download.disabled=true;
-    setStatus("Falha ao gerar a cópia de revisão. Tente recarregar o PDF.","bad");
-  }finally{
-    E.generate.disabled=currentChanges().length===0;
-    E.generate.textContent="Gerar cópia de revisão";
-  }
+    for(const pg of doc.getPages()){
+      const w=pg.getWidth(),h=pg.getHeight();
+      pg.drawText("DOCUMENTO EDITADO - SEM VALIDADE FISCAL",{x:32,y:h-26,size:12,font:bold,color:PDFLib.rgb(.75,0,0),opacity:.85});
+      pg.drawText("Cópia de revisão. Os dados fiscais originais devem ser conferidos no documento emitido oficialmente.",{x:32,y:18,size:7,font,color:PDFLib.rgb(.55,0,0),opacity:.9});
+    }
+    out=await doc.save({useObjectStreams:true});E.downloadBtn.disabled=false;setStatus("PDF editado gerado. Agora o download contém as alterações visíveis.","ok");
+  }catch(err){console.error(err);setStatus("Erro ao gerar o PDF editado.","bad")}
 };
-
-E.download.onclick=()=>{
-  if(!outBytes)return;
-  const blob=new Blob([outBytes],{type:"application/pdf"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;a.download="danfe_copia_de_revisao.pdf";
-  document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1500);
+E.downloadBtn.onclick=()=>{
+  if(!out)return;const blob=new Blob([out],{type:"application/pdf"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="danfe_editado_sem_validade_fiscal.pdf";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);
 };
-
-window.addEventListener("error",ev=>{
-  if(String(ev.message||"").toLowerCase().includes("pdf")){
-    setStatus("Ocorreu um erro ao carregar a biblioteca de PDF. Recarregue a página com conexão à internet.","bad");
-  }
-});
-
-setTimeout(()=>{
-  if(!librariesReady()){
-    setStatus("As bibliotecas de PDF ainda não carregaram. Se abriu o HTML direto no computador, confirme que há conexão com a internet.","warn");
-  }else{
-    initLibraries();
-  }
-},1800);
-
 })();
 </script>
 </body>
