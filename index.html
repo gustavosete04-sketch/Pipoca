@@ -65,7 +65,7 @@
             <div id="scope" class="scope"></div>
             <div id="box" class="box"></div>
             <div id="preview" class="preview"></div>
-            <div id="mark" class="mark">DOCUMENTO EDITADO - SEM VALIDADE FISCAL</div>
+            
           </div>
         </div>
       </div>
@@ -273,7 +273,7 @@ E.generate.onclick=async()=>{
     for(const pg of doc.getPages()){
       const h=pg.getHeight();
       pg.drawRectangle({x:25,y:h-28,width:210,height:16,color:PDFLib.rgb(.72,0,0),opacity:.92});
-      pg.drawText("DOCUMENTO EDITADO - SEM VALIDADE FISCAL",{x:30,y:h-23,size:8.5,font:bold,color:PDFLib.rgb(1,1,1)});
+      
       pg.drawText("Cópia de revisão visual; confira os dados fiscais no documento oficial.",{x:30,y:12,size:6.5,font,color:PDFLib.rgb(.65,0,0)});
     }
     out=await doc.save({useObjectStreams:true});E.download.disabled=false;
@@ -283,7 +283,7 @@ E.generate.onclick=async()=>{
 E.download.onclick=()=>{
   if(!out)return;
   const blob=new Blob([out],{type:"application/pdf"}),url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download="danfe_editado_sem_validade_fiscal.pdf";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);
+  a.href=url;a.download="danfe_validade_fiscal.pdf";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);
 };
 })();
 </script>
