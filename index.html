@@ -1,265 +1,97 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Editor Inteligente de PDF</title>
-
-  <!-- Bibliotecas carregadas por CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-  <style>
-    :root{
-      --bg:#0b1020;
-      --panel:#11182c;
-      --panel2:#151f38;
-      --text:#eef3ff;
-      --muted:#9db0d2;
-      --accent:#69e2ff;
-      --accent2:#8b7cff;
-      --ok:#54e3a1;
-      --danger:#ff6f91;
-      --border:rgba(255,255,255,.10);
-      --shadow:0 18px 50px rgba(0,0,0,.35);
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:
-        radial-gradient(circle at 15% 10%,rgba(105,226,255,.12),transparent 25%),
-        radial-gradient(circle at 90% 15%,rgba(139,124,255,.12),transparent 25%),
-        var(--bg);
-      color:var(--text);
-      min-height:100vh;
-    }
-    .app{max-width:1500px;margin:auto;padding:22px}
-    .top{
-      display:flex;gap:16px;align-items:center;justify-content:space-between;
-      margin-bottom:18px
-    }
-    .brand h1{margin:0;font-size:24px}
-    .brand p{margin:5px 0 0;color:var(--muted);font-size:14px}
-    .badge{
-      padding:9px 12px;border:1px solid var(--border);border-radius:999px;
-      color:var(--muted);background:rgba(255,255,255,.035);font-size:12px
-    }
-    .grid{
-      display:grid;grid-template-columns:380px 1fr;gap:18px;align-items:start
-    }
-    .panel{
-      background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.015));
-      border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)
-    }
-    .sidebar{padding:18px;position:sticky;top:18px}
-    .viewer{min-height:78vh;overflow:hidden}
-    .section{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--border)}
-    .section:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
-    .section h3{font-size:14px;margin:0 0 11px;color:#dbe6ff}
-    .drop{
-      border:1.5px dashed rgba(105,226,255,.40);
-      border-radius:16px;padding:18px;text-align:center;
-      background:rgba(105,226,255,.045);cursor:pointer;transition:.2s
-    }
-    .drop:hover,.drop.drag{background:rgba(105,226,255,.10);border-color:var(--accent)}
-    .drop strong{display:block;margin-bottom:6px}
-    .drop span{font-size:12px;color:var(--muted)}
-    input[type=file]{display:none}
-    label{display:block;font-size:12px;color:var(--muted);margin:0 0 7px}
-    input,select,textarea,button{
-      font:inherit
-    }
-    input[type=text],input[type=number],select,textarea{
-      width:100%;border:1px solid var(--border);background:#0e1529;color:var(--text);
-      border-radius:12px;padding:11px 12px;outline:none
-    }
-    input:focus,select:focus,textarea:focus{border-color:rgba(105,226,255,.55)}
-    textarea{min-height:72px;resize:vertical}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .actions{display:grid;gap:9px}
-    button{
-      border:0;border-radius:12px;padding:11px 13px;cursor:pointer;
-      background:#202b49;color:var(--text);font-weight:700;transition:.15s
-    }
-    button:hover{transform:translateY(-1px);filter:brightness(1.08)}
-    button.primary{
-      background:linear-gradient(135deg,var(--accent),var(--accent2));color:#07101b
-    }
-    button.success{
-      background:linear-gradient(135deg,#4ee0a2,#73f1d4);color:#061811
-    }
-    button.ghost{border:1px solid var(--border);background:transparent}
-    button.danger{background:rgba(255,111,145,.12);color:#ff9fb5;border:1px solid rgba(255,111,145,.25)}
-    button:disabled{opacity:.45;cursor:not-allowed;transform:none}
-    .status{
-      border:1px solid var(--border);padding:10px 12px;border-radius:12px;
-      font-size:12px;color:var(--muted);background:rgba(255,255,255,.025)
-    }
-    .status.ok{color:#a9ffd8;border-color:rgba(84,227,161,.25);background:rgba(84,227,161,.07)}
-    .status.warn{color:#ffdca8;border-color:rgba(255,190,90,.25);background:rgba(255,190,90,.06)}
-    .canvasbar{
-      display:flex;gap:10px;align-items:center;justify-content:space-between;
-      padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)
-    }
-    .canvasbar .left,.canvasbar .right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .canvasbar button{padding:8px 10px;font-size:12px}
-    .pageInfo{font-size:12px;color:var(--muted)}
-    .stage{
-      position:relative;min-height:72vh;display:flex;justify-content:center;align-items:flex-start;
-      padding:26px;overflow:auto;background:
-        linear-gradient(45deg,rgba(255,255,255,.018) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.018) 75%),
-        linear-gradient(45deg,rgba(255,255,255,.018) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.018) 75%);
-      background-size:28px 28px;background-position:0 0,14px 14px
-    }
-    .paper{
-      position:relative;box-shadow:0 14px 45px rgba(0,0,0,.55);background:white;line-height:0
-    }
-    canvas{display:block;max-width:none}
-    .marker{
-      position:absolute;border:2px solid #ff3b6e;background:rgba(255,59,110,.12);
-      pointer-events:none;border-radius:3px
-    }
-    .marker::after{
-      content:"campo";position:absolute;top:-20px;left:-2px;
-      background:#ff3b6e;color:white;font:700 10px/1 sans-serif;padding:4px 6px;border-radius:4px
-    }
-    .manualHint{
-      position:absolute;inset:0;cursor:crosshair;display:none
-    }
-    .manualHint.active{display:block}
-    .detected-list{
-      display:grid;gap:7px;max-height:180px;overflow:auto
-    }
-    .detected{
-      border:1px solid var(--border);border-radius:10px;padding:8px;cursor:pointer;
-      background:rgba(255,255,255,.025);font-size:12px
-    }
-    .detected:hover{border-color:rgba(105,226,255,.45)}
-    .detected b{color:#dff8ff}
-    .detected small{display:block;color:var(--muted);margin-top:4px;line-height:1.3}
-    .help{font-size:11px;color:var(--muted);line-height:1.45}
-    .hidden{display:none!important}
-    .spinner{
-      width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:white;
-      border-radius:50%;display:inline-block;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @media (max-width:980px){
-      .grid{grid-template-columns:1fr}
-      .sidebar{position:static}
-      .viewer{min-height:60vh}
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PDF Turbo Editor v2</title>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+:root{--bg:#07101f;--panel:#0e1930;--panel2:#12213f;--text:#eef5ff;--muted:#94a8c7;--line:rgba(255,255,255,.10);--a:#5ee8ff;--b:#8b7cff;--ok:#61e6a7;--warn:#ffd16d;--bad:#ff7c9a;--shadow:0 18px 55px rgba(0,0,0,.42)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(circle at 10% 0,rgba(94,232,255,.11),transparent 26%),radial-gradient(circle at 95% 5%,rgba(139,124,255,.12),transparent 28%),var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.app{max-width:1600px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:14px}.brand h1{margin:0;font-size:24px}.brand p{margin:5px 0 0;color:var(--muted);font-size:13px}.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.chip{border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-size:11px;color:var(--muted);background:rgba(255,255,255,.03)}.chip.fast{color:#bfffea;border-color:rgba(97,230,167,.25);background:rgba(97,230,167,.06)}
+.layout{display:grid;grid-template-columns:410px 1fr;gap:14px}.panel{border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.012));border-radius:18px;box-shadow:var(--shadow)}.side{padding:14px;position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto}.viewer{overflow:hidden;min-height:80vh}.sec{padding:0 0 13px;margin:0 0 13px;border-bottom:1px solid var(--line)}.sec:last-child{border:0;margin-bottom:0;padding-bottom:0}.sec h3{font-size:13px;margin:0 0 10px}.drop{display:block;border:1.5px dashed rgba(94,232,255,.38);border-radius:14px;padding:14px;text-align:center;background:rgba(94,232,255,.04);transition:.15s}.drop:hover,.drop.drag{background:rgba(94,232,255,.09);border-color:var(--a)}.drop b{display:block;font-size:13px;margin-bottom:4px}.drop span{font-size:11px;color:var(--muted)}input[type=file]{display:none}
+.status{font-size:11px;line-height:1.4;padding:9px 10px;border:1px solid var(--line);border-radius:10px;color:var(--muted);background:rgba(255,255,255,.02)}.status.ok{color:#bfffea;border-color:rgba(97,230,167,.23);background:rgba(97,230,167,.06)}.status.warn{color:#ffe4aa;border-color:rgba(255,209,109,.23);background:rgba(255,209,109,.05)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.input{width:100%;border:1px solid var(--line);border-radius:10px;background:#0a1428;color:var(--text);padding:9px 10px;outline:none}.input:focus{border-color:rgba(94,232,255,.5)}label.t{display:block;font-size:10px;color:var(--muted);margin:0 0 5px}.btns{display:grid;gap:7px}.btn{padding:10px 12px;border-radius:10px;background:#1b2947;color:var(--text);font-weight:700;font-size:12px}.btn:hover{filter:brightness(1.08)}.btn:disabled{opacity:.42;cursor:not-allowed;filter:none}.btn.primary{background:linear-gradient(135deg,var(--a),var(--b));color:#07101f}.btn.ok{background:linear-gradient(135deg,#54e3a1,#7af0d6);color:#061a12}.btn.ghost{background:transparent;border:1px solid var(--line)}.btn.bad{background:rgba(255,124,154,.09);border:1px solid rgba(255,124,154,.2);color:#ffabc0}
+.quickHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}.quickHead span{font-size:10px;color:var(--muted)}.fields{display:grid;gap:7px;max-height:310px;overflow:auto}.field{border:1px solid var(--line);border-radius:11px;padding:8px;background:rgba(255,255,255,.018)}.fieldTop{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:5px}.fieldTop b{font-size:11px}.fieldTop small{font-size:9px;color:var(--muted)}.field .current{font-size:10px;color:#b7c6df;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.field input{padding:8px 9px;font-size:11px}.empty{padding:12px;border:1px dashed var(--line);border-radius:10px;text-align:center;color:var(--muted);font-size:10px}
+.toolrow{display:flex;gap:6px;flex-wrap:wrap}.mini{padding:7px 9px;border-radius:9px;background:#1a2947;color:#dbe7ff;font-size:10px}.mini:disabled{opacity:.4}.mini.active{outline:2px solid rgba(94,232,255,.55)}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.018)}.bar .group{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.bar .info{font-size:10px;color:var(--muted)}.stage{min-height:75vh;padding:24px;overflow:auto;display:flex;justify-content:center;align-items:flex-start;background:linear-gradient(45deg,rgba(255,255,255,.015) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.015) 75%),linear-gradient(45deg,rgba(255,255,255,.015) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.015) 75%);background-size:30px 30px;background-position:0 0,15px 15px}.paper{position:relative;background:white;box-shadow:0 20px 55px rgba(0,0,0,.55);line-height:0}.paper canvas{display:block}.overlayLayer{position:absolute;inset:0;pointer-events:none}.ov{position:absolute;background:#fff;color:#000;border:1px dashed rgba(0,145,255,.55);overflow:hidden;font-family:Arial,sans-serif;line-height:1.05;padding:1px 2px;white-space:pre-wrap;word-break:break-word}.ov::before{content:"EDIÇÃO";position:absolute;right:1px;top:1px;font-size:6px;color:rgba(0,90,180,.7)}.hit{position:absolute;border:2px solid #ff386c;background:rgba(255,56,108,.11);pointer-events:none}.hit::after{content:"alvo";position:absolute;top:-17px;left:-2px;font:700 9px/1 Arial;background:#ff386c;color:#fff;padding:3px 5px;border-radius:4px}.clickLayer{position:absolute;inset:0;display:none;cursor:crosshair;pointer-events:auto}.clickLayer.on{display:block}.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:5px}@keyframes spin{to{transform:rotate(360deg)}}.note{font-size:9.5px;color:var(--muted);line-height:1.45}.dangerNote{font-size:9.5px;line-height:1.45;color:#ffd9a0;border:1px solid rgba(255,209,109,.18);background:rgba(255,209,109,.04);padding:8px;border-radius:9px}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}.side{position:static;max-height:none}.viewer{min-height:60vh}}
+</style>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div class="brand">
-      <h1>Editor Inteligente de PDF</h1>
-      <p>Encontre um campo, altere o texto e gere um novo PDF direto no navegador.</p>
-    </div>
-    <div class="badge">Processamento local • sem upload para servidor</div>
+    <div class="brand"><h1>PDF Turbo Editor v2</h1><p>Edição instantânea na tela, várias alterações de uma vez e geração do PDF só no final.</p></div>
+    <div class="chips"><div class="chip fast">⚡ Preview instantâneo</div><div class="chip">OCR sob demanda</div><div class="chip">Processamento local</div></div>
   </div>
 
-  <div class="grid">
-    <aside class="panel sidebar">
-      <div class="section">
+  <div class="layout">
+    <aside class="panel side">
+      <section class="sec">
         <h3>1. Abrir PDF</h3>
-        <label class="drop" id="dropZone" for="pdfInput">
-          <strong>Arraste o PDF aqui</strong>
-          <span>ou clique para selecionar</span>
-        </label>
-        <input id="pdfInput" type="file" accept="application/pdf,.pdf">
-      </div>
+        <label class="drop" id="drop" for="file"><b>Arraste ou clique para abrir</b><span>PDF comum ou escaneado</span></label>
+        <input id="file" type="file" accept="application/pdf,.pdf" />
+        <div id="status" class="status" style="margin-top:8px">Nenhum PDF aberto.</div>
+      </section>
 
-      <div class="section">
-        <h3>2. Campo a localizar</h3>
-        <label for="fieldName">Procurar por</label>
-        <select id="fieldName">
-          <option value="Endereço">Endereço</option>
-          <option value="CEP">CEP</option>
-          <option value="Bairro">Bairro</option>
-          <option value="Município">Município</option>
-          <option value="Cidade">Cidade</option>
-          <option value="custom">Outro texto...</option>
-        </select>
-        <div id="customWrap" class="hidden" style="margin-top:9px">
-          <input id="customField" type="text" placeholder="Ex.: Destinatário/Remetente">
+      <section class="sec">
+        <div class="quickHead"><h3 style="margin:0">2. Campos rápidos</h3><span id="scanCount">0 encontrados</span></div>
+        <div class="toolrow" style="margin-bottom:8px">
+          <button class="mini" id="scanPage" disabled>Escanear página</button>
+          <button class="mini" id="scanAll" disabled>Escanear tudo</button>
+          <button class="mini" id="ocr" disabled>OCR</button>
         </div>
-        <div class="actions" style="margin-top:10px">
-          <button id="detectBtn" class="primary" disabled>Localizar automaticamente</button>
-          <button id="ocrBtn" class="ghost" disabled>Usar OCR se for escaneado</button>
+        <div id="fields" class="fields"><div class="empty">Ao abrir o PDF, os campos comuns da página serão procurados automaticamente.</div></div>
+      </section>
+
+      <section class="sec">
+        <h3>3. Busca livre / edição manual</h3>
+        <div class="row">
+          <div style="grid-column:1/-1"><label class="t">Texto ou rótulo</label><input id="search" class="input" placeholder="Ex.: Endereço, CEP, Cliente..." /></div>
         </div>
-      </div>
-
-      <div class="section">
-        <h3>3. Resultado</h3>
-        <div id="status" class="status">Abra um PDF para começar.</div>
-        <div id="detectedList" class="detected-list" style="margin-top:9px"></div>
-      </div>
-
-      <div class="section">
-        <h3>4. Novo texto</h3>
-        <label for="newText">Substituir por</label>
-        <textarea id="newText" placeholder="Digite o novo endereço ou valor..."></textarea>
-
-        <div class="row" style="margin-top:9px">
-          <div>
-            <label for="fontSize">Fonte</label>
-            <input id="fontSize" type="number" min="5" max="40" step="0.5" value="8">
-          </div>
-          <div>
-            <label for="rectWidth">Largura da área</label>
-            <input id="rectWidth" type="number" min="30" max="1000" value="220">
-          </div>
+        <div class="toolrow" style="margin-top:7px">
+          <button class="mini" id="find" disabled>Localizar</button>
+          <button class="mini" id="pick" disabled>Selecionar na página</button>
         </div>
+        <div id="searchResults" style="display:grid;gap:5px;margin-top:7px"></div>
+      </section>
 
-        <div class="row" style="margin-top:9px">
-          <div>
-            <label for="rectHeight">Altura da área</label>
-            <input id="rectHeight" type="number" min="8" max="300" value="18">
-          </div>
-          <div>
-            <label for="padding">Margem interna</label>
-            <input id="padding" type="number" min="0" max="20" value="2">
-          </div>
+      <section class="sec">
+        <h3>4. Ajuste da seleção</h3>
+        <div class="row">
+          <div><label class="t">Largura</label><input id="w" class="input" type="number" min="10" value="190" /></div>
+          <div><label class="t">Altura</label><input id="h" class="input" type="number" min="6" value="14" /></div>
+          <div><label class="t">Fonte</label><input id="fs" class="input" type="number" min="4" max="40" step="0.5" value="8" /></div>
+          <div><label class="t">Margem</label><input id="pad" class="input" type="number" min="0" max="10" value="1" /></div>
         </div>
+        <div style="margin-top:7px"><label class="t">Novo texto para a seleção manual</label><textarea id="manualText" class="input" style="min-height:60px;resize:vertical" placeholder="Digite o novo texto..."></textarea></div>
+        <div class="btns" style="margin-top:7px"><button class="btn ghost" id="addManual" disabled>Adicionar alteração manual</button></div>
+      </section>
 
-        <div class="actions" style="margin-top:10px">
-          <button id="manualBtn" class="ghost" disabled>Selecionar posição manualmente</button>
-          <button id="applyBtn" class="success" disabled>Aplicar alteração</button>
-          <button id="downloadBtn" class="primary" disabled>Baixar PDF alterado</button>
+      <section class="sec">
+        <h3>5. Gerar</h3>
+        <div class="status" id="queue">0 alterações na fila.</div>
+        <div class="btns" style="margin-top:8px">
+          <button class="btn ok" id="generate" disabled>Gerar PDF atualizado</button>
+          <button class="btn primary" id="download" disabled>Baixar PDF</button>
+          <button class="btn bad" id="clear" disabled>Limpar alterações</button>
         </div>
-      </div>
+      </section>
 
-      <div class="help">
-        Dica: se o campo não for encontrado automaticamente, clique em
-        <b>Selecionar posição manualmente</b> e depois clique no local exato do texto no PDF.
-        O site cobre a área antiga com branco e escreve o novo valor por cima.
-      </div>
+      <div class="dangerNote">Para documentos fiscais, esta ferramenta serve para revisão, mockup ou cópia visual. Uma NF-e/DANFE oficial deve ser corrigida no sistema emissor; o PDF gerado marca as páginas modificadas como <b>CÓPIA EDITADA</b>.</div>
     </aside>
 
     <main class="panel viewer">
-      <div class="canvasbar">
-        <div class="left">
-          <button id="prevBtn" disabled>◀ Página</button>
-          <button id="nextBtn" disabled>Próxima ▶</button>
-          <span id="pageInfo" class="pageInfo">Nenhum PDF aberto</span>
-        </div>
-        <div class="right">
-          <button id="zoomOut" disabled>−</button>
-          <span id="zoomInfo" class="pageInfo">100%</span>
-          <button id="zoomIn" disabled>+</button>
-        </div>
+      <div class="bar">
+        <div class="group"><button class="mini" id="prev" disabled>◀</button><button class="mini" id="next" disabled>▶</button><span class="info" id="pageInfo">Nenhum PDF</span></div>
+        <div class="group"><button class="mini" id="zoomOut" disabled>−</button><span class="info" id="zoomInfo">100%</span><button class="mini" id="zoomIn" disabled>+</button></div>
       </div>
-
       <div class="stage">
         <div class="paper" id="paper">
           <canvas id="canvas"></canvas>
-          <div id="marker" class="marker hidden"></div>
-          <div id="manualLayer" class="manualHint"></div>
+          <div id="overlays" class="overlayLayer"></div>
+          <div id="hit" class="hit" style="display:none"></div>
+          <div id="clickLayer" class="clickLayer"></div>
         </div>
       </div>
     </main>
@@ -267,418 +99,135 @@
 </div>
 
 <script type="module">
-  import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 
-  const $ = (id) => document.getElementById(id);
-  const pdfInput = $("pdfInput"), dropZone = $("dropZone"), canvas = $("canvas");
-  const ctx = canvas.getContext("2d"), paper = $("paper"), marker = $("marker");
-  const manualLayer = $("manualLayer"), status = $("status");
-  const fieldName = $("fieldName"), customWrap = $("customWrap"), customField = $("customField");
-  const detectBtn = $("detectBtn"), ocrBtn = $("ocrBtn"), manualBtn = $("manualBtn");
-  const applyBtn = $("applyBtn"), downloadBtn = $("downloadBtn");
-  const detectedList = $("detectedList"), newText = $("newText");
-  const fontSize = $("fontSize"), rectWidth = $("rectWidth"), rectHeight = $("rectHeight"), padding = $("padding");
-  const prevBtn = $("prevBtn"), nextBtn = $("nextBtn"), pageInfo = $("pageInfo");
-  const zoomOut = $("zoomOut"), zoomIn = $("zoomIn"), zoomInfo = $("zoomInfo");
+const $=id=>document.getElementById(id);
+const els={file:$("file"),drop:$("drop"),status:$("status"),fields:$("fields"),scanCount:$("scanCount"),scanPage:$("scanPage"),scanAll:$("scanAll"),ocr:$("ocr"),search:$("search"),find:$("find"),pick:$("pick"),searchResults:$("searchResults"),w:$("w"),h:$("h"),fs:$("fs"),pad:$("pad"),manualText:$("manualText"),addManual:$("addManual"),queue:$("queue"),generate:$("generate"),download:$("download"),clear:$("clear"),prev:$("prev"),next:$("next"),pageInfo:$("pageInfo"),zoomOut:$("zoomOut"),zoomIn:$("zoomIn"),zoomInfo:$("zoomInfo"),paper:$("paper"),canvas:$("canvas"),overlays:$("overlays"),hit:$("hit"),clickLayer:$("clickLayer")};
+const ctx=els.canvas.getContext("2d",{alpha:false});
 
-  let originalBytes = null;
-  let workingBytes = null;
-  let pdfjsDoc = null;
-  let currentPage = 1;
-  let scale = 1.35;
-  let selected = null; // {page,x,y,width,height,text, pdfX,pdfY,pdfWidth,pdfHeight}
-  let pageTextCache = new Map();
+let srcBytes=null, outBytes=null, doc=null, pageNo=1, scale=1.25, renderToken=0;
+let pageCache=new Map(), fieldMap=new Map(), edits=[], selected=null, ocrLoaded=false;
+const COMMON=["Nome / Razão Social","CNPJ/CPF","Endereço","Bairro","CEP","Município","UF","Data emissão","Data saída","Hora saída"];
 
-  function setStatus(msg, type="") {
-    status.className = "status" + (type ? " " + type : "");
-    status.innerHTML = msg;
-  }
+function norm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim()}
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function setStatus(t,type=""){els.status.className="status"+(type?" "+type:"");els.status.innerHTML=t}
+function enable(v=true){[els.scanPage,els.scanAll,els.ocr,els.find,els.pick,els.prev,els.next,els.zoomOut,els.zoomIn].forEach(x=>x.disabled=!v)}
+function updateQueue(){els.queue.textContent=`${edits.length} alteração(ões) na fila.`;els.generate.disabled=!edits.length;els.clear.disabled=!edits.length;els.addManual.disabled=!selected;renderOverlays()}
+function uniqueId(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
 
-  function normalize(s){
-    return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
-  }
+async function loadPDF(file){
+  if(!file || (file.type && file.type!=="application/pdf")){setStatus("Escolha um PDF válido.","warn");return}
+  setStatus('<span class="spinner"></span>Abrindo PDF...');
+  srcBytes=new Uint8Array(await file.arrayBuffer()); outBytes=null; edits=[]; fieldMap.clear(); pageCache.clear(); selected=null; els.download.disabled=true;
+  doc=await pdfjsLib.getDocument({data:srcBytes.slice()}).promise; pageNo=1; enable(true); updateQueue(); await renderPage();
+  setStatus(`PDF aberto: <b>${doc.numPages}</b> página(s). Procurando campos da página...`,"ok");
+  scanCurrent(true).catch(()=>{});
+}
 
-  fieldName.addEventListener("change", () => {
-    customWrap.classList.toggle("hidden", fieldName.value !== "custom");
-  });
+els.file.addEventListener("change",e=>loadPDF(e.target.files[0]));
+["dragenter","dragover"].forEach(ev=>els.drop.addEventListener(ev,e=>{e.preventDefault();els.drop.classList.add("drag")}));
+["dragleave","drop"].forEach(ev=>els.drop.addEventListener(ev,e=>{e.preventDefault();els.drop.classList.remove("drag")}));
+els.drop.addEventListener("drop",e=>loadPDF(e.dataTransfer.files[0]));
 
-  function getSearchTerm(){
-    return fieldName.value === "custom" ? customField.value.trim() : fieldName.value;
-  }
+async function renderPage(){
+  if(!doc)return; const token=++renderToken; const page=await doc.getPage(pageNo); const vp=page.getViewport({scale}); const dpr=Math.min(window.devicePixelRatio||1,1.6);
+  els.canvas.width=Math.round(vp.width*dpr);els.canvas.height=Math.round(vp.height*dpr);els.canvas.style.width=vp.width+"px";els.canvas.style.height=vp.height+"px";els.paper.style.width=vp.width+"px";els.paper.style.height=vp.height+"px";
+  const rctx={canvasContext:ctx,viewport:vp,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null,background:"white"};
+  await page.render(rctx).promise;if(token!==renderToken)return;els.pageInfo.textContent=`Página ${pageNo} de ${doc.numPages}`;els.zoomInfo.textContent=Math.round(scale/1.25*100)+"%";renderOverlays();renderSelection();
+}
+els.prev.onclick=async()=>{if(pageNo>1){pageNo--;await renderPage();renderFieldsForPage()}};
+els.next.onclick=async()=>{if(pageNo<doc.numPages){pageNo++;await renderPage();renderFieldsForPage()}};
+els.zoomOut.onclick=async()=>{scale=Math.max(.5,scale-.15);await renderPage()};els.zoomIn.onclick=async()=>{scale=Math.min(2.8,scale+.15);await renderPage()};
 
-  async function loadFile(file){
-    if(!file || file.type !== "application/pdf"){
-      setStatus("Escolha um arquivo PDF válido.", "warn");
-      return;
+async function getPageItems(p){
+  if(pageCache.has(p))return pageCache.get(p); const page=await doc.getPage(p); const vp=page.getViewport({scale:1}); const tc=await page.getTextContent({disableCombineTextItems:false});
+  const items=tc.items.map(it=>{const tx=pdfjsLib.Util.transform(vp.transform,it.transform);const h=Math.max(5,Math.abs(it.height||tx[3]||8));return{text:String(it.str||"").trim(),x:tx[4],y:tx[5]-h,baseY:tx[5],w:Math.max(1,it.width||1),h}}).filter(i=>i.text);
+  const data={items,width:vp.width,height:vp.height};pageCache.set(p,data);return data;
+}
+function sameLabel(a,b){const na=norm(a),nb=norm(b);return na===nb||na.includes(nb)||nb.includes(na)}
+function valueForLabel(items,label){
+  const labs=items.filter(i=>sameLabel(i.text,label)); const out=[];
+  for(const l of labs){
+    const below=items.filter(i=>i!==l&&i.y>l.y+1&&i.y<l.y+28&&i.x>=l.x-4&&i.x<l.x+Math.max(300,l.w+220)).map(i=>({i,s:(i.y-l.y)*2+Math.abs(i.x-l.x)*.05})).sort((a,b)=>a.s-b.s);
+    const right=items.filter(i=>i!==l&&Math.abs(i.y-l.y)<7&&i.x>l.x+l.w+2&&i.x<l.x+l.w+360).map(i=>({i,s:(i.x-l.x)*.08+Math.abs(i.y-l.y)})).sort((a,b)=>a.s-b.s);
+    const c=(below[0]&&(!right[0]||below[0].s<=right[0].s))?below[0].i:right[0]?.i;
+    if(c)out.push({label,page:pageNo,labelItem:l,value:c.text,x:c.x,y:c.y,w:Math.max(c.w+8, label==="UF"?24:80),h:Math.max(c.h+4,11)});
+  }return out;
+}
+
+async function detectFields(p){
+  const {items}=await getPageItems(p); const found=[];
+  for(const label of COMMON){
+    const labs=items.filter(i=>sameLabel(i.text,label));
+    for(const l of labs){
+      const below=items.filter(i=>i!==l&&i.y>l.y+.5&&i.y<l.y+25&&i.x>=l.x-3&&i.x<l.x+Math.max(260,l.w+200)).map(i=>({i,s:(i.y-l.y)*2+Math.abs(i.x-l.x)*.06})).sort((a,b)=>a.s-b.s);
+      const right=items.filter(i=>i!==l&&Math.abs(i.y-l.y)<6&&i.x>l.x+l.w+1&&i.x<l.x+l.w+350).map(i=>({i,s:(i.x-l.x)*.08+Math.abs(i.y-l.y)})).sort((a,b)=>a.s-b.s);
+      const c=(below[0]&&(!right[0]||below[0].s<=right[0].s))?below[0].i:right[0]?.i;
+      if(c)found.push({id:`${p}|${label}|${Math.round(l.x)}|${Math.round(l.y)}`,page:p,label,current:c.text,x:c.x,y:c.y,w:Math.max(c.w+10,label==="UF"?22:70),h:Math.max(c.h+4,11),fs:Math.min(10,Math.max(6,c.h*.9))});
     }
-    originalBytes = new Uint8Array(await file.arrayBuffer());
-    workingBytes = originalBytes.slice();
-    pageTextCache.clear();
-    selected = null;
-    marker.classList.add("hidden");
-    detectedList.innerHTML = "";
-    pdfjsDoc = await pdfjsLib.getDocument({data: workingBytes}).promise;
-    currentPage = 1;
-    await renderPage();
-    [detectBtn,ocrBtn,manualBtn,prevBtn,nextBtn,zoomOut,zoomIn].forEach(b=>b.disabled=false);
-    applyBtn.disabled = true;
-    downloadBtn.disabled = true;
-    setStatus(`PDF carregado com <b>${pdfjsDoc.numPages}</b> página(s).`, "ok");
   }
+  return found;
+}
+async function scanCurrent(silent=false){
+  if(!doc)return; if(!silent){els.scanPage.disabled=true;els.scanPage.innerHTML='<span class="spinner"></span>Lendo...'}
+  const f=await detectFields(pageNo);f.forEach(x=>fieldMap.set(x.id,x));renderFieldsForPage();
+  if(!silent){els.scanPage.disabled=false;els.scanPage.textContent="Escanear página";setStatus(`Página ${pageNo}: <b>${f.length}</b> campo(s) identificado(s).`,f.length?"ok":"warn")}
+}
+els.scanPage.onclick=()=>scanCurrent(false);
 
-  pdfInput.addEventListener("change", e => loadFile(e.target.files[0]));
-  ["dragenter","dragover"].forEach(ev=>dropZone.addEventListener(ev,e=>{
-    e.preventDefault(); dropZone.classList.add("drag");
-  }));
-  ["dragleave","drop"].forEach(ev=>dropZone.addEventListener(ev,e=>{
-    e.preventDefault(); dropZone.classList.remove("drag");
-  }));
-  dropZone.addEventListener("drop", e => loadFile(e.dataTransfer.files[0]));
+async function scanAll(){
+  if(!doc)return;els.scanAll.disabled=true;els.scanAll.innerHTML='<span class="spinner"></span>Escaneando...';setStatus("Escaneando páginas em paralelo...","warn");
+  const ps=Array.from({length:doc.numPages},(_,i)=>i+1); let idx=0; const workers=Array.from({length:Math.min(4,ps.length)},async()=>{while(idx<ps.length){const p=ps[idx++];const f=await detectFieldsForPage(p);f.forEach(x=>fieldMap.set(x.id,x))}});await Promise.all(workers);
+  els.scanAll.disabled=false;els.scanAll.textContent="Escanear tudo";renderFieldsForPage();setStatus(`Varredura concluída: <b>${fieldMap.size}</b> campo(s) identificado(s).`,"ok");
+}
+async function detectFieldsForPage(p){
+  const {items}=await getPageItems(p);const found=[];
+  for(const label of COMMON){for(const l of items.filter(i=>sameLabel(i.text,label))){const candidates=items.filter(i=>i!==l&&((i.y>l.y+.5&&i.y<l.y+25&&i.x>=l.x-3&&i.x<l.x+Math.max(260,l.w+200))||(Math.abs(i.y-l.y)<6&&i.x>l.x+l.w+1&&i.x<l.x+l.w+350))).map(i=>({i,s:(Math.max(0,i.y-l.y))*2+Math.max(0,i.x-l.x)*.06+Math.abs(i.y-l.y)})).sort((a,b)=>a.s-b.s);const c=candidates[0]?.i;if(c)found.push({id:`${p}|${label}|${Math.round(l.x)}|${Math.round(l.y)}`,page:p,label,current:c.text,x:c.x,y:c.y,w:Math.max(c.w+10,label==="UF"?22:70),h:Math.max(c.h+4,11),fs:Math.min(10,Math.max(6,c.h*.9))})}}
+  return found;
+}
+els.scanAll.onclick=scanAll;
 
-  async function renderPage(){
-    if(!pdfjsDoc) return;
-    const page = await pdfjsDoc.getPage(currentPage);
-    const viewport = page.getViewport({scale});
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    paper.style.width = viewport.width + "px";
-    paper.style.height = viewport.height + "px";
-    await page.render({canvasContext:ctx,viewport}).promise;
-    pageInfo.textContent = `Página ${currentPage} de ${pdfjsDoc.numPages}`;
-    zoomInfo.textContent = Math.round(scale/1.35*100) + "%";
-    if(selected && selected.page === currentPage) drawMarker(selected);
-    else marker.classList.add("hidden");
-  }
+function renderFieldsForPage(){
+  const arr=[...fieldMap.values()].filter(f=>f.page===pageNo);els.scanCount.textContent=`${arr.length} encontrado(s)`;
+  if(!arr.length){els.fields.innerHTML='<div class="empty">Nenhum campo rápido nesta página. Use a busca livre ou seleção manual.</div>';return}
+  els.fields.innerHTML=""; for(const f of arr){const div=document.createElement("div");div.className="field";const existing=edits.find(e=>e.sourceId===f.id);div.innerHTML=`<div class="fieldTop"><b>${esc(f.label)}</b><small>pág. ${f.page}</small></div><div class="current" title="${esc(f.current)}">Atual: ${esc(f.current)}</div><input class="input" data-field="${esc(f.id)}" placeholder="Novo valor..." value="${esc(existing?.text||"")}" />`;const inp=div.querySelector("input");inp.addEventListener("input",()=>upsertFieldEdit(f,inp.value));inp.addEventListener("focus",()=>{selected={...f};renderSelection()});els.fields.appendChild(div)}
+}
+function upsertFieldEdit(f,text){const i=edits.findIndex(e=>e.sourceId===f.id);if(!text.trim()){if(i>=0)edits.splice(i,1)}else{const e={id:i>=0?edits[i].id:uniqueId(),sourceId:f.id,page:f.page,x:f.x,y:f.y,w:f.w,h:f.h,fs:f.fs,text:text.trim()};if(i>=0)edits[i]=e;else edits.push(e)}updateQueue()}
 
-  prevBtn.onclick = async()=>{ if(currentPage>1){currentPage--;await renderPage();}};
-  nextBtn.onclick = async()=>{ if(currentPage<pdfjsDoc.numPages){currentPage++;await renderPage();}};
-  zoomOut.onclick = async()=>{scale=Math.max(.55,scale-.15);await renderPage();};
-  zoomIn.onclick = async()=>{scale=Math.min(3,scale+.15);await renderPage();};
+els.find.onclick=async()=>{
+  if(!doc)return;const q=norm(els.search.value);if(!q)return;els.searchResults.innerHTML="";const {items}=await getPageItems(pageNo);const hits=items.filter(i=>norm(i.text).includes(q)).slice(0,12);if(!hits.length){els.searchResults.innerHTML='<div class="empty">Não encontrado nesta página.</div>';return}
+  for(const i of hits){const b=document.createElement("button");b.className="mini";b.style.textAlign="left";b.textContent=i.text;b.onclick=()=>{selected={page:pageNo,x:i.x,y:i.y,w:Math.max(i.w+10,Number(els.w.value)||150),h:Math.max(i.h+4,Number(els.h.value)||14),fs:Number(els.fs.value)||8,current:i.text};els.w.value=Math.round(selected.w);els.h.value=Math.round(selected.h);renderSelection()};els.searchResults.appendChild(b)}
+};
 
-  async function extractText(pageNo){
-    if(pageTextCache.has(pageNo)) return pageTextCache.get(pageNo);
-    const page = await pdfjsDoc.getPage(pageNo);
-    const viewport = page.getViewport({scale:1});
-    const content = await page.getTextContent();
+els.pick.onclick=()=>{if(!doc)return;els.clickLayer.classList.add("on");els.pick.classList.add("active");setStatus("Clique na posição inicial do texto no PDF.","warn")};
+els.clickLayer.onclick=e=>{const r=els.clickLayer.getBoundingClientRect();selected={page:pageNo,x:(e.clientX-r.left)/scale,y:(e.clientY-r.top)/scale,w:Number(els.w.value)||190,h:Number(els.h.value)||14,fs:Number(els.fs.value)||8,current:""};els.clickLayer.classList.remove("on");els.pick.classList.remove("active");renderSelection();els.addManual.disabled=false;setStatus("Posição selecionada. Digite o novo texto e clique em adicionar.","ok")};
+function renderSelection(){if(!selected||selected.page!==pageNo){els.hit.style.display="none";return}els.hit.style.display="block";els.hit.style.left=selected.x*scale+"px";els.hit.style.top=selected.y*scale+"px";els.hit.style.width=(Number(els.w.value)||selected.w)*scale+"px";els.hit.style.height=(Number(els.h.value)||selected.h)*scale+"px";els.addManual.disabled=false}
+[els.w,els.h].forEach(x=>x.addEventListener("input",renderSelection));
+els.addManual.onclick=()=>{if(!selected||!els.manualText.value.trim())return;edits.push({id:uniqueId(),page:selected.page,x:selected.x,y:selected.y,w:Number(els.w.value)||selected.w,h:Number(els.h.value)||selected.h,fs:Number(els.fs.value)||selected.fs||8,text:els.manualText.value.trim()});els.manualText.value="";updateQueue();setStatus("Alteração adicionada à fila.","ok")};
 
-    const items = content.items.map(it=>{
-      const tx = pdfjsLib.Util.transform(viewport.transform, it.transform);
-      const x = tx[4];
-      const baselineY = tx[5];
-      const h = Math.max(5, Math.abs(it.height || tx[3] || 8));
-      const w = Math.max(2, it.width || 2);
-      return {
-        text: it.str,
-        x,
-        y: baselineY - h,
-        baselineY,
-        width:w,
-        height:h
-      };
-    }).filter(x=>x.text && x.text.trim());
+function renderOverlays(){els.overlays.innerHTML="";for(const e of edits.filter(x=>x.page===pageNo)){const d=document.createElement("div");d.className="ov";d.style.left=e.x*scale+"px";d.style.top=e.y*scale+"px";d.style.width=e.w*scale+"px";d.style.height=e.h*scale+"px";d.style.fontSize=(e.fs*scale)+"px";d.textContent=e.text;els.overlays.appendChild(d)}}
+els.clear.onclick=()=>{edits=[];outBytes=null;els.download.disabled=true;renderFieldsForPage();updateQueue();setStatus("Alterações limpas.")};
 
-    const data = {items, viewport};
-    pageTextCache.set(pageNo,data);
-    return data;
-  }
+function wrapText(text,font,size,maxW){const words=String(text).split(/\s+/);const lines=[];let line="";for(const w of words){const t=line?line+" "+w:w;if(font.widthOfTextAtSize(t,size)<=maxW||!line)line=t;else{lines.push(line);line=w}}if(line)lines.push(line);return lines}
+function fitText(text,font,size,maxW,maxH){let s=Math.max(4,size);while(s>=4){const lines=wrapText(text,font,s,maxW);if(lines.length*s*1.13<=maxH)return{size:s,lines};s-=.5}return{size:4,lines:wrapText(text,font,4,maxW)}}
 
-  function scoreCandidate(label, candidate){
-    const dy = candidate.y - label.y;
-    const dx = candidate.x - label.x;
-    let score = 9999;
-    // mesmo bloco logo abaixo: comum em DANFE
-    if(dy > 2 && dy < 35 && Math.abs(dx) < 140) score = Math.abs(dy-12) + Math.abs(dx)*0.08;
-    // valor à direita na mesma linha
-    if(Math.abs(dy) < 8 && dx > 10 && dx < 500) score = Math.min(score, dx*.07 + Math.abs(dy));
-    return score;
-  }
+els.generate.onclick=async()=>{
+  if(!srcBytes||!edits.length)return;els.generate.disabled=true;els.generate.innerHTML='<span class="spinner"></span>Gerando...';setStatus("Aplicando todas as alterações em uma única operação...","warn");
+  const pdf=await PDFLib.PDFDocument.load(srcBytes.slice());const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);const bold=await pdf.embedFont(PDFLib.StandardFonts.HelveticaBold);const touched=new Set();
+  for(const e of edits){const p=pdf.getPages()[e.page-1];if(!p)continue;const {height:ph,width:pw}=p.getSize();const pad=Number(els.pad.value)||0;const y=ph-e.y-e.h;p.drawRectangle({x:e.x-pad,y:y-pad,width:e.w+pad*2,height:e.h+pad*2,color:PDFLib.rgb(1,1,1)});const fit=fitText(e.text,font,e.fs||8,Math.max(8,e.w-pad*2),Math.max(6,e.h-pad*2));fit.lines.forEach((line,k)=>{const yy=y+e.h-pad-fit.size-(k*fit.size*1.13);if(yy>=y-pad)p.drawText(line,{x:e.x+pad,y:yy,size:fit.size,font,color:PDFLib.rgb(0,0,0)})});touched.add(e.page)}
+  for(const pno of touched){const p=pdf.getPages()[pno-1];const {width}=p.getSize();const text="CÓPIA EDITADA";const size=7;const tw=bold.widthOfTextAtSize(text,size);p.drawText(text,{x:Math.max(8,width-tw-10),y:5,size,font:bold,color:PDFLib.rgb(.55,.12,.12),opacity:.75})}
+  outBytes=await pdf.save({useObjectStreams:true});els.download.disabled=false;els.generate.disabled=false;els.generate.textContent="Gerar PDF atualizado";setStatus(`PDF pronto com <b>${edits.length}</b> alteração(ões).`,"ok")
+};
+els.download.onclick=()=>{if(!outBytes)return;const blob=new Blob([outBytes],{type:"application/pdf"});const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download="documento_editado.pdf";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)};
 
-  async function detect(){
-    if(!pdfjsDoc) return;
-    const term = getSearchTerm();
-    if(!term){setStatus("Digite o texto que deseja localizar.","warn");return;}
+async function loadOCR(){if(ocrLoaded)return true;setStatus("Carregando OCR apenas agora para manter o site leve...","warn");await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s)});ocrLoaded=true;return true}
+els.ocr.onclick=async()=>{
+  if(!doc)return;els.ocr.disabled=true;els.ocr.innerHTML='<span class="spinner"></span>OCR...';try{await loadOCR();const data=els.canvas.toDataURL("image/jpeg",.88);const result=await Tesseract.recognize(data,"por",{logger:m=>{if(m.status==="recognizing text")setStatus(`OCR: ${Math.round((m.progress||0)*100)}%`,"warn")}});const text=result.data.text||"";setStatus(`OCR concluído. Foram reconhecidos aproximadamente <b>${text.length}</b> caracteres. Use a busca manual/seleção para editar a região desejada.`,"ok")}catch(e){setStatus("OCR não pôde ser carregado. A seleção manual continua disponível.","warn")}finally{els.ocr.disabled=false;els.ocr.textContent="OCR"}
+};
 
-    detectBtn.disabled = true;
-    detectBtn.innerHTML = '<span class="spinner"></span>Procurando...';
-    detectedList.innerHTML = "";
-    const matches = [];
-
-    for(let p=1;p<=pdfjsDoc.numPages;p++){
-      const {items} = await extractText(p);
-      const labels = items.filter(it=>normalize(it.text).includes(normalize(term)));
-
-      for(const label of labels){
-        let candidates = items
-          .filter(it=>it!==label && !normalize(it.text).includes(normalize(term)))
-          .map(it=>({it,score:scoreCandidate(label,it)}))
-          .filter(x=>x.score<9999)
-          .sort((a,b)=>a.score-b.score);
-
-        // Quando o rótulo e o valor estão no mesmo item: "Endereço: Rua..."
-        const raw = label.text;
-        const idx = normalize(raw).indexOf(normalize(term));
-        let inlineValue = "";
-        if(idx >= 0){
-          const colon = raw.indexOf(":");
-          if(colon >= 0 && raw.slice(colon+1).trim()) inlineValue = raw.slice(colon+1).trim();
-        }
-
-        if(inlineValue){
-          matches.push({
-            page:p,text:inlineValue,
-            x:label.x + Math.min(label.width*.35,100),
-            y:label.y,
-            width:Math.max(120,label.width*.65),
-            height:Math.max(12,label.height+4)
-          });
-        } else if(candidates[0]){
-          const c = candidates[0].it;
-          matches.push({
-            page:p,text:c.text,
-            x:c.x,y:c.y,
-            width:Math.max(120,c.width+12),
-            height:Math.max(12,c.height+5)
-          });
-        }
-      }
-    }
-
-    detectBtn.disabled = false;
-    detectBtn.textContent = "Localizar automaticamente";
-
-    if(!matches.length){
-      setStatus(`Não encontrei <b>${term}</b> como texto selecionável. Tente OCR ou seleção manual.`, "warn");
-      return;
-    }
-
-    setStatus(`Encontrei <b>${matches.length}</b> possível(is) posição(ões). Clique em uma delas.`, "ok");
-
-    matches.forEach((m,i)=>{
-      const el = document.createElement("div");
-      el.className = "detected";
-      el.innerHTML = `<b>Página ${m.page}</b><small>${escapeHtml(m.text || "(posição encontrada)")}</small>`;
-      el.onclick = async()=>{
-        selectMatch(m);
-        currentPage = m.page;
-        await renderPage();
-      };
-      detectedList.appendChild(el);
-    });
-
-    selectMatch(matches[0]);
-    currentPage = matches[0].page;
-    await renderPage();
-  }
-
-  function selectMatch(m){
-    selected = {
-      page:m.page,
-      x:m.x, y:m.y,
-      width:Number(rectWidth.value)||m.width,
-      height:Number(rectHeight.value)||m.height,
-      text:m.text||""
-    };
-    rectWidth.value = Math.round(m.width || 220);
-    rectHeight.value = Math.round(m.height || 18);
-    newText.placeholder = m.text ? `Atual: ${m.text}\nDigite o novo valor...` : "Digite o novo valor...";
-    applyBtn.disabled = false;
-    if(currentPage===m.page) drawMarker(selected);
-  }
-
-  function drawMarker(sel){
-    const sx = sel.x * scale;
-    const sy = sel.y * scale;
-    const sw = Number(rectWidth.value || sel.width) * scale;
-    const sh = Number(rectHeight.value || sel.height) * scale;
-    marker.style.left = sx+"px";
-    marker.style.top = sy+"px";
-    marker.style.width = sw+"px";
-    marker.style.height = sh+"px";
-    marker.classList.remove("hidden");
-  }
-
-  [rectWidth,rectHeight].forEach(el=>el.addEventListener("input",()=>{
-    if(selected && selected.page===currentPage){
-      selected.width=Number(rectWidth.value);
-      selected.height=Number(rectHeight.value);
-      drawMarker(selected);
-    }
-  }));
-
-  detectBtn.onclick = detect;
-
-  manualBtn.onclick = ()=>{
-    if(!pdfjsDoc) return;
-    manualLayer.classList.add("active");
-    setStatus("Clique no ponto onde começa o texto que deseja substituir.", "warn");
-  };
-
-  manualLayer.onclick = (e)=>{
-    const r = manualLayer.getBoundingClientRect();
-    const x = (e.clientX-r.left)/scale;
-    const y = (e.clientY-r.top)/scale;
-    selected = {
-      page:currentPage,x,y,
-      width:Number(rectWidth.value)||220,
-      height:Number(rectHeight.value)||18,
-      text:""
-    };
-    manualLayer.classList.remove("active");
-    drawMarker(selected);
-    applyBtn.disabled=false;
-    setStatus("Posição manual selecionada. Ajuste largura/altura e digite o novo texto.", "ok");
-  };
-
-  async function runOCR(){
-    if(!pdfjsDoc) return;
-    const term = getSearchTerm();
-    if(!term){setStatus("Escolha ou digite o nome do campo primeiro.","warn");return;}
-
-    ocrBtn.disabled=true;
-    ocrBtn.innerHTML='<span class="spinner"></span>Executando OCR...';
-    setStatus("OCR pode levar alguns segundos. Estou lendo a página atual.", "warn");
-
-    // usa o canvas atual como imagem
-    const dataUrl = canvas.toDataURL("image/png");
-    const result = await Tesseract.recognize(dataUrl, "por", {
-      logger: m => {
-        if(m.status==="recognizing text"){
-          setStatus(`OCR: ${Math.round((m.progress||0)*100)}%`, "warn");
-        }
-      }
-    }).catch(err=>null);
-
-    ocrBtn.disabled=false;
-    ocrBtn.textContent="Usar OCR se for escaneado";
-
-    if(!result){
-      setStatus("Falha no OCR. Use a seleção manual.", "warn");
-      return;
-    }
-
-    const words = result.data.words || [];
-    const target = normalize(term);
-    const hit = words.find(w=>normalize(w.text).includes(target));
-
-    if(!hit){
-      setStatus(`OCR terminou, mas não localizou <b>${term}</b>. Use seleção manual.`, "warn");
-      return;
-    }
-
-    const b = hit.bbox;
-    selected = {
-      page:currentPage,
-      x:b.x0/scale,
-      y:b.y1/scale + 2,
-      width:Number(rectWidth.value)||220,
-      height:Number(rectHeight.value)||18,
-      text:""
-    };
-    drawMarker(selected);
-    applyBtn.disabled=false;
-    setStatus("Rótulo encontrado via OCR. A posição foi marcada; ajuste se necessário.", "ok");
-  }
-
-  ocrBtn.onclick = runOCR;
-
-  function wrapText(text, font, size, maxWidth){
-    const words = text.trim().split(/\s+/);
-    const lines = [];
-    let line = "";
-    for(const word of words){
-      const test = line ? line+" "+word : word;
-      if(font.widthOfTextAtSize(test,size) <= maxWidth || !line){
-        line = test;
-      }else{
-        lines.push(line);
-        line = word;
-      }
-    }
-    if(line) lines.push(line);
-    return lines;
-  }
-
-  applyBtn.onclick = async()=>{
-    if(!selected || !workingBytes) return;
-    const text = newText.value.trim();
-    if(!text){setStatus("Digite o novo texto antes de aplicar.","warn");return;}
-
-    applyBtn.disabled=true;
-    applyBtn.innerHTML='<span class="spinner"></span>Aplicando...';
-
-    const pdfDoc = await PDFLib.PDFDocument.load(workingBytes);
-    const page = pdfDoc.getPages()[selected.page-1];
-    const { width:pw, height:ph } = page.getSize();
-
-    // As coordenadas extraídas por PDF.js estão em escala 1 e origem visual no topo.
-    const x = selected.x;
-    const topY = selected.y;
-    const w = Number(rectWidth.value)||selected.width;
-    const h = Number(rectHeight.value)||selected.height;
-    const pad = Number(padding.value)||0;
-    const size = Number(fontSize.value)||8;
-
-    const y = ph - topY - h;
-
-    page.drawRectangle({
-      x:x-pad,
-      y:y-pad,
-      width:w+pad*2,
-      height:h+pad*2,
-      color:PDFLib.rgb(1,1,1),
-      borderWidth:0
-    });
-
-    const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-    const lines = wrapText(text,font,size,Math.max(10,w-pad*2));
-    const lineHeight = size*1.15;
-
-    lines.forEach((line,i)=>{
-      const lineY = y + h - size - pad - (i*lineHeight);
-      if(lineY > y){
-        page.drawText(line,{
-          x:x+pad,
-          y:lineY,
-          size,
-          font,
-          color:PDFLib.rgb(0,0,0)
-        });
-      }
-    });
-
-    workingBytes = await pdfDoc.save();
-
-    // Reabre para atualizar a prévia
-    pageTextCache.clear();
-    pdfjsDoc = await pdfjsLib.getDocument({data:workingBytes.slice()}).promise;
-    await renderPage();
-
-    downloadBtn.disabled=false;
-    applyBtn.disabled=false;
-    applyBtn.textContent="Aplicar alteração";
-    setStatus("Alteração aplicada. Confira a prévia e clique em <b>Baixar PDF alterado</b>.", "ok");
-  };
-
-  downloadBtn.onclick = ()=>{
-    if(!workingBytes) return;
-    const blob = new Blob([workingBytes],{type:"application/pdf"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href=url;
-    a.download="documento_alterado.pdf";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),1500);
-  };
-
-  function escapeHtml(str){
-    return String(str).replace(/[&<>"']/g, m=>({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    }[m]));
-  }
+window.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"&&edits.length){e.preventDefault();edits.pop();outBytes=null;els.download.disabled=true;renderFieldsForPage();updateQueue();setStatus("Última alteração removida.")}});
 </script>
 </body>
 </html>
